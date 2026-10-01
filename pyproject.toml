@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bot-arena"
+version = "0.1.0"
+description = "A local arena for learning, testing and watching autonomous bots"
+requires-python = ">=3.9"
+
+[tool.setuptools.packages.find]
+include = ["arena*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
