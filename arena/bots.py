@@ -1,20 +1,20 @@
 """Readable reference strategies; all decisions use the public observation only."""
 import random
 from collections import deque
-from .sdk import DIRECTIONS
+from .sdk import DIRECTIONS, BOMB_FUSE_TICKS, bomb_blast_tiles
+
+
+def burning_tiles(obs):
+    # Actions resolve on the next tick; flames expiring then are no longer hazardous.
+    return {(f["x"], f["y"]) for f in obs.get("flames", [])
+            if f["expires_at"] > obs["tick"] + 1}
 
 
 def danger_tiles(obs):
-    danger=set()
+    danger=burning_tiles(obs)
     board=obs["board"]
     for b in obs["bombs"]:
-        danger.add((b["x"],b["y"]))
-        for dx,dy in DIRECTIONS.values():
-            for d in range(1,4):
-                x,y=b["x"]+dx*d,b["y"]+dy*d
-                if not (0<=x<15 and 0<=y<15) or board[y][x]=="#": break
-                danger.add((x,y))
-                if board[y][x]=="+": break
+        danger.update(bomb_blast_tiles(b, board))
     for b in obs["projectiles"]:
         for d in range(3):
             danger.add((b["x"]+d*b["dx"],b["y"]+d*b["dy"]))
@@ -27,6 +27,7 @@ def path_action(obs, targets, avoid=True):
     board=obs["board"]
     bombs={(b["x"],b["y"]) for b in obs["bombs"]}
     danger=danger_tiles(obs) if avoid else set()
+    burning=burning_tiles(obs)
     queue=deque([(start,None)])
     visited={start}
     # Rotate tie-breaking, deterministically, to avoid permanent seat-direction bias.
@@ -39,7 +40,7 @@ def path_action(obs, targets, avoid=True):
         for k,(dx,dy) in directions:
             n=(x+dx,y+dy)
             if n in visited or not (0<=n[0]<15 and 0<=n[1]<15): continue
-            if board[n[1]][n[0]]!="." or n in bombs: continue
+            if board[n[1]][n[0]]!="." or n in bombs or n in burning: continue
             if n in danger and start not in danger: continue
             visited.add(n)
             queue.append((n,first or "move_"+k))
@@ -130,10 +131,11 @@ class BomberBot:
     def choose_action(self, obs):
         p=obs["self"]
         if features(obs)[1]: return act_for_mode(obs,"escape")
-        near_crate=any(obs["board"][p["y"]+dy][p["x"]+dx]=="+" for dx,dy in DIRECTIONS.values())
-        near_enemy=any(abs(e["x"]-p["x"])+abs(e["y"]-p["y"])<=3 for e in obs["opponents"])
+        cells=set(bomb_blast_tiles(p, obs["board"]))
+        near_crate=any(obs["board"][y][x]=="+" for x,y in cells)
+        near_enemy=any((e["x"], e["y"]) in cells for e in obs["opponents"])
         if (near_crate or near_enemy) and not any(b["owner"]==p["id"] for b in obs["bombs"]):
-            hypothetical=dict(obs,bombs=obs["bombs"]+[{"x":p["x"],"y":p["y"],"owner":p["id"],"explode_at":obs["tick"]+10}])
+            hypothetical=dict(obs,bombs=obs["bombs"]+[{"x":p["x"],"y":p["y"],"owner":p["id"],"explode_at":obs["tick"]+BOMB_FUSE_TICKS}])
             if act_for_mode(hypothetical,"escape")!="wait":
                 return "switch" if p["weapon"]!="bomb" else "fire_n"
         return act_for_mode(obs,teacher_mode(obs))

@@ -5,7 +5,7 @@ from collections import Counter, deque
 from dataclasses import dataclass, asdict
 from typing import Optional
 
-from .sdk import ACTIONS, DIRECTIONS
+from .sdk import ACTIONS, DIRECTIONS, BOMB_FUSE_TICKS, BOMB_FLAME_TICKS, BOMB_DAMAGE, bomb_blast_tiles
 
 SIZE = 15
 TICK_SECONDS = .2
@@ -97,6 +97,8 @@ class Game:
         self.bombs = []
         self.projectiles = []
         self.flames = []
+        self._explosion_sequence = 0
+        self._explosion_hits = {}
         self.events = []
         self.history = []
         self.done = False
@@ -126,17 +128,7 @@ class Game:
         self.history.append(e)
 
     def blast_tiles(self, bomb, board=None):
-        board = board or self.board
-        cells = [(bomb["x"], bomb["y"])]
-        for dx, dy in DIRECTIONS.values():
-            for d in range(1, 4):
-                x, y = bomb["x"] + dx*d, bomb["y"] + dy*d
-                if not (0 <= x < SIZE and 0 <= y < SIZE) or board[y][x] == "#":
-                    break
-                cells.append((x,y))
-                if board[y][x] == "+":
-                    break
-        return cells
+        return bomb_blast_tiles(bomb, self.board if board is None else board)
 
     def observe(self, pid, full=False):
         p = self.players[pid]
@@ -174,7 +166,9 @@ class Game:
             return self.snapshot()
         self.tick += 1
         self.events = []
-        self.flames = []
+        self.flames = [f for f in self.flames if f["expires_at"] > self.tick]
+        active_explosions = {f["explosion_id"] for f in self.flames}
+        self._explosion_hits = {eid: hit for eid, hit in self._explosion_hits.items() if eid in active_explosions}
         for p in self.players:
             p.cooldown = max(0,p.cooldown-1)
             p.protection = max(0,p.protection-1)
@@ -182,6 +176,7 @@ class Game:
                 occupied = {(q.x,q.y) for q in self.players if q.alive}
                 hazards = {cell for b in self.bombs for cell in self.blast_tiles(b)}
                 hazards.update((b["x"],b["y"]) for b in self.projectiles)
+                hazards.update((f["x"],f["y"]) for f in self.flames)
                 floors = [(x,y) for y in range(1,14) for x in range(1,14)
                           if self.board[y][x]=="." and (x,y) not in occupied | hazards]
                 if floors:
@@ -231,7 +226,7 @@ class Game:
                 p.protection = 0
                 if p.weapon == "bomb":
                     if not any(b["owner"]==p.id for b in self.bombs) and (p.x,p.y) not in bomb_cells:
-                        self.bombs.append({"x":p.x,"y":p.y,"owner":p.id,"explode_at":self.tick+10})
+                        self.bombs.append({"x":p.x,"y":p.y,"owner":p.id,"explode_at":self.tick+BOMB_FUSE_TICKS})
                         self.event(p.name+" planted a bomb","bomb")
                 elif p.cooldown == 0:
                     dx,dy = DIRECTIONS[a[-1]]
@@ -258,7 +253,8 @@ class Game:
             elif 0<=x<SIZE and 0<=y<SIZE and self.board[y][x]==".":
                 remaining.append(shot)
         self.projectiles = remaining
-        queue = deque(b for b in self.bombs if b["explode_at"]<=self.tick)
+        burning = {(f["x"], f["y"]) for f in self.flames}
+        queue = deque(b for b in self.bombs if b["explode_at"]<=self.tick or (b["x"], b["y"]) in burning)
         exploded = set()
         crates = set()
         blast_board = copy.deepcopy(self.board)
@@ -268,14 +264,24 @@ class Game:
             if key in exploded: continue
             exploded.add(key)
             cells=set(self.blast_tiles(b,blast_board))
+            self._explosion_sequence += 1
+            eid = self._explosion_sequence
+            self._explosion_hits[eid] = set()
             for x,y in sorted(cells):
-                self.flames.append({"x":x,"y":y,"owner":b["owner"]})
+                self.flames.append({"x":x,"y":y,"owner":b["owner"],
+                                    "explosion_id":eid,"expires_at":self.tick+BOMB_FLAME_TICKS})
                 if blast_board[y][x]=="+": crates.add((x,y))
                 self.pickups.pop((x,y),None)
-            for p in alive:
-                if (p.x,p.y) in cells: hits[p.id].append((2,b["owner"],"bomb"))
             queue.extend(other for other in self.bombs if (other["x"],other["y"]) in cells and (other["x"],other["y"]) not in exploded)
         self.bombs=[b for b in self.bombs if (b["x"],b["y"]) not in exploded]
+        # One hit per player per explosion, including shield-absorbed hits. The
+        # private hit ledger never leaks other players' exposure through observations.
+        for f in self.flames:
+            hit = self._explosion_hits[f["explosion_id"]]
+            for p in alive:
+                if not p.protection and p.id not in hit and (p.x,p.y)==(f["x"],f["y"]):
+                    hits[p.id].append((BOMB_DAMAGE,f["owner"],"bomb"))
+                    hit.add(p.id)
         for x,y in sorted(crates):
             self.board[y][x]="."
             if self.rng.random()<.35:

@@ -1,6 +1,7 @@
 """Balanced, reproducible benchmark batches."""
 import math
 from .runner import Match
+from .sdk import RULES_VERSION
 
 
 def wilson(wins,n):
@@ -35,7 +36,7 @@ def evaluate(candidate, opponents, games=20, seed=10000, mode="elimination", reg
         pass
     wins=sum(r["outcome"]=="win" for r in results)
     draws=sum(r["outcome"]=="draw" for r in results)
-    return {"candidate":candidate,"opponents":opponents,"mode":mode,"seed":seed,"games":len(results),
+    return {"rules_version":RULES_VERSION,"candidate":candidate,"opponents":opponents,"mode":mode,"seed":seed,"games":len(results),
             "wins":wins,"draws":draws,"losses":len(results)-wins-draws,"win_rate":wins/max(1,len(results)),
             "win_interval":wilson(wins,len(results)),"results":results,
             "averages":{key:sum(r["metrics"][key] for r in results)/max(1,len(results)) for key in

@@ -1,14 +1,14 @@
-# Prototype rules v0.1
+# Prototype rules v0.2
 
 ## Tick resolution
 
 The runner requests all living bots' actions from the same pre-tick state. Decisions are resolved together. Render speed does not change simulation time.
 
-1. Advance the clock, decrement cooldowns/protection and attempt due respawns.
+1. Advance the clock, expire old flames, decrement cooldowns/protection and attempt due respawns.
 2. Validate actions. Resolve movement simultaneously.
 3. Switch weapons or spawn attacks; collect pickups.
 4. Advance projectiles one tile; compute hits.
-5. Detonate due bombs and chain reactions against a shared pre-explosion terrain snapshot.
+5. Detonate due bombs, bombs on lingering flames and chain reactions against a shared pre-explosion terrain snapshot. Compute hits from all active flames.
 6. Destroy crates and roll seeded pickup drops.
 7. Resolve shields and damage for all players, then eliminations and credit.
 8. Announce/deliver supply drops and check the round outcome.
@@ -19,11 +19,12 @@ Movement cannot enter solid walls, crates or existing bombs. A player may leave 
 
 - Three starting HP. Blaster equipped initially; one switch action changes weapon.
 - Blaster: 1 damage, projectile advances one tile each tick, five-tick cooldown. Stops at walls/crates; it does not destroy them or trigger bombs. Projectiles do not collide with one another. Owner is immune to their own projectile.
-- Bomb: one active per owner, ten-tick fuse, 2 damage, cross radius three. Any fire direction places it. The blast includes its origin, stops at walls and at the first crate it destroys, and chains to bombs it reaches. Owner can be damaged. Blast damage occurs only on the explosion tick; flames are a one-tick visual event.
+- Bomb: one active per owner, ten-tick (2-second) fuse, 2 damage, full-axis cross with no distance cap. Any fire direction places it. The blast includes its origin, stops at walls and at the first crate it destroys, and chains to bombs it reaches. Owner can be damaged.
+- Flames remain hazardous for three ticks (0.6 seconds): the detonation tick and the next two ticks. They expire before movement on `expires_at`. Players can move into flames, but each explosion hits each player at most once over its entire lifetime, even if they stay, move along the blast or leave and reenter. A shield-absorbed hit also counts; respawn protection prevents exposure while active. Distinct overlapping explosions can each deal damage. Bombs planted on active flames detonate immediately. Existing flames keep their original footprint even after crates disappear.
 - Switching never resets blaster cooldown. Weapon firing removes respawn protection, including unsuccessful fire attempts.
 - Damage is simultaneous: a dying player's already-fired attack still resolves.
 - Shield consumes the strongest incoming hit that tick; remaining hits still apply. On equal-strength hits, lower owner ID is consumed first (fixed tie-break).
-- Kill credit goes to the largest post-shield damage contributor on the fatal tick. Tied contributors use lower seat ID. A self-credited elimination counts as suicide, not a kill. There are no assists in v0.1.
+- Kill credit goes to the largest post-shield damage contributor on the fatal tick. Tied contributors use lower seat ID. A self-credited elimination counts as suicide, not a kill. There are no assists in v0.2.
 - Damage dealt measures nominal post-shield attack damage; damage taken is capped by remaining HP.
 
 ## Items
@@ -46,7 +47,7 @@ The local app is not an adversarial competition security boundary: trusted code 
 
 Elimination: last living player wins. If nobody survives a tick, draw. At tick 450, two or more survivors draw regardless of HP or damage; a sole survivor still wins.
 
-Deathmatch: three-minute match. Respawn after 15 ticks on an available floor tile outside current bomb blast areas/projectile positions, favoring distance from living enemies. If no safe tile exists, postpone respawn. Respawn grants three HP, blaster, no shield, and ten ticks of protection. Existing bombs remain until detonation. Most kills minus suicides wins at tick 900; a tied top score is a draw.
+Deathmatch: three-minute match. Respawn after 15 ticks on an available floor tile outside current bomb blast areas, active flames and projectile positions, favoring distance from living enemies. If no safe tile exists, postpone respawn. Respawn grants three HP, blaster, no shield, and ten ticks of protection. Existing bombs remain until detonation. Most kills minus suicides wins at tick 900; a tied top score is a draw.
 
 Three-player rounds use three of four corner spawns. Evaluation rotates occupied corners and candidate seats; a single three-player map is not claimed to be position-neutral.
 

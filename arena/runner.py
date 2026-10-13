@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 from .bots import BUILTINS
 from .engine import Game
-from .sdk import ACTIONS
+from .sdk import ACTIONS, RULES_VERSION
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -139,7 +139,7 @@ class Match:
         return self.game.snapshot()
 
     def replay(self):
-        return {"version":1,"rules_version":"0.1","bot_ids":self.bot_ids,"seed":self.game.seed,"mode":self.game.mode,
+        return {"version":1,"rules_version":RULES_VERSION,"bot_ids":self.bot_ids,"seed":self.game.seed,"mode":self.game.mode,
                 "rotation":self.rotation,"max_ticks":self.game.max_ticks,
                 "actions":self.action_log,"frames":self.frames,"errors":self.errors}
 

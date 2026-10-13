@@ -12,12 +12,14 @@ The public `arena.sdk.Bot` class is optional. Any uploaded file exposing a no-ar
 | `opponents` | Currently visible living opponents only |
 | `bombs` | Visible `x`, `y`, `owner`, `explode_at` |
 | `projectiles` | Visible `x`, `y`, `dx`, `dy`, `owner` |
-| `flames` | Visible explosion tiles from the latest resolved tick |
+| `flames` | Visible active flame tiles: `x`, `y`, `owner`, `explosion_id`, `expires_at` |
 | `pickups` | Visible `x`, `y`, `kind` (`health`, `shield`, `battery`) |
 | `supply_drop` | Public next-drop location, kind and arrival tick, or null |
 | `actions` | Protocol action strings; presence does not imply a currently legal or safe move |
 
 Bot-visible positions are integer tiles, x increasing east, y increasing south. Player IDs are zero-based and stable during a round. Memory resets for each round. Remaining fuse is `explode_at - tick`. Do not infer that an unseen entity ceased to exist just because it disappeared from a list.
+
+Bombs reach the full row and column until a wall or the first crate; `arena.sdk.bomb_blast_tiles(bomb, board)` predicts this footprint using your remembered terrain. Flames last three ticks, including detonation. A flame is hazardous during the next action only if `expires_at > tick + 1`. Tiles from one explosion share an `explosion_id`; distinct overlapping explosions have different IDs. Each explosion can hit you once for 2 damage, including a shield-absorbed hit, and its owner retains credit for later flame hits. Other players' exposure histories are not included in observations. Bot helpers and replay exports now use rules v0.2; retrain older learned models to evaluate against the updated hazards.
 
 Action strings: `wait`, `switch`, `move_n`, `move_s`, `move_w`, `move_e`, `fire_n`, `fire_s`, `fire_w`, `fire_e`. Bomb placement uses any fire action while the bomb weapon is equipped. Every action, including weapon switching, uses one tick. No attacks can accompany a movement in the same tick.
 
