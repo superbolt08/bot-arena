@@ -14,6 +14,8 @@ SIZE = 15
 CENTER = (7, 7)
 MAX_SCOUT_MOVES = 12
 MAX_BOMB_ESCAPE_MOVES = 5
+BOMB_FUSE_TICKS = 10
+BOMB_FLAME_TICKS = 3
 DIRECTIONS = {
     "n": (0, -1),
     "s": (0, 1),
@@ -40,14 +42,26 @@ def blast_cells(board, bomb):
     origin = (bomb["x"], bomb["y"])
     cells = {origin}
     for dx, dy in DIRECTIONS.values():
-        for distance in range(1, 4):
-            x = bomb["x"] + dx * distance
-            y = bomb["y"] + dy * distance
-            if not inside(x, y) or board[y][x] == "#":
-                break
+        x = bomb["x"] + dx
+        y = bomb["y"] + dy
+        while inside(x, y) and board[y][x] != "#":
             cells.add((x, y))
             if board[y][x] == "+":
                 break
+            x += dx
+            y += dy
+    return cells
+
+
+def conservative_blast_cells(board, bomb):
+    """Use remembered walls but ignore crates that may have been destroyed unseen."""
+    cells = {(bomb["x"], bomb["y"])}
+    for dx, dy in DIRECTIONS.values():
+        x, y = bomb["x"] + dx, bomb["y"] + dy
+        while inside(x, y) and board[y][x] != "#":
+            cells.add((x, y))
+            x += dx
+            y += dy
     return cells
 
 
@@ -71,6 +85,34 @@ def chained_blast_cells(board, bombs, seeds=None):
     return cells
 
 
+def bomb_detonation_ticks(board, bombs):
+    """Return earliest known detonation ticks after every possible chain."""
+    zones = [blast_cells(board, bomb) for bomb in bombs]
+    ticks = [bomb["explode_at"] for bomb in bombs]
+    changed = True
+    while changed:
+        changed = False
+        for source, zone in enumerate(zones):
+            for target, bomb in enumerate(bombs):
+                if (target != source and (bomb["x"], bomb["y"]) in zone
+                        and ticks[target] > ticks[source]):
+                    ticks[target] = ticks[source]
+                    changed = True
+    return ticks
+
+
+def effective_detonation_tick(board, bombs, target):
+    """Find a bomb's fuse after accounting for bombs that can chain into it."""
+    target_key = (target["x"], target["y"], target["owner"])
+    indexed = next((i for i, bomb in enumerate(bombs)
+                    if (bomb["x"], bomb["y"], bomb["owner"]) == target_key), None)
+    planned = list(bombs)
+    if indexed is None:
+        planned.append(target)
+        indexed = len(planned) - 1
+    return bomb_detonation_ticks(board, planned)[indexed]
+
+
 def projectile_cells(observation):
     """Mark each visible projectile tile and its next three positions."""
     danger = set()
@@ -87,7 +129,8 @@ def known_danger(observation):
     board = observation["board"]
     danger = chained_blast_cells(board, observation["bombs"])
     danger.update(projectile_cells(observation))
-    danger.update((f["x"], f["y"]) for f in observation["flames"])
+    danger.update((f["x"], f["y"]) for f in observation["flames"]
+                  if f.get("expires_at", observation["tick"] + 2) > observation["tick"] + 1)
     return danger
 
 
@@ -123,6 +166,37 @@ def line_shot(observation):
             if clear:
                 return "fire_s" if step > 0 else "fire_n"
     return None
+
+
+def clear_axis_lane(board, start, end):
+    """Whether a blaster can travel between two tiles on one row or column."""
+    x, y = start
+    tx, ty = end
+    if x != tx and y != ty:
+        return False
+    dx = (tx > x) - (tx < x)
+    dy = (ty > y) - (ty < y)
+    x, y = x + dx, y + dy
+    while (x, y) != (tx, ty):
+        if not inside(x, y) or board[y][x] != ".":
+            return False
+        x, y = x + dx, y + dy
+    return True
+
+
+def firing_positions(observation, enemies, minimum=3, maximum=6):
+    """Known floor tiles that give a clear, mid-range axis shot at an enemy."""
+    board = observation["board"]
+    positions = set()
+    for enemy in enemies:
+        ex, ey = enemy["x"], enemy["y"]
+        for distance in range(minimum, maximum + 1):
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                x, y = ex + dx * distance, ey + dy * distance
+                if (open_floor(board, x, y)
+                        and clear_axis_lane(board, (x, y), (ex, ey))):
+                    positions.add((x, y))
+    return positions
 
 
 def route_to(observation, goal, blocked=None, allow_danger_start=False):
@@ -168,6 +242,24 @@ def local_safe_room(board, tile, forbidden, occupied, previous):
     if len(exits) < 2:
         return False
 
+    # A refuge must offer a real bend within two steps, not just a straight
+    # corridor with five tiles of length.
+    has_safe_turn = False
+    for first in exits:
+        first_dx, first_dy = first[0] - x, first[1] - y
+        for _, second in tile_neighbors(*first):
+            second_dx, second_dy = second[0] - first[0], second[1] - first[1]
+            if (second == tile or second in forbidden or second in occupied
+                    or not open_floor(board, *second)):
+                continue
+            if first_dx * second_dx + first_dy * second_dy == 0:
+                has_safe_turn = True
+                break
+        if has_safe_turn:
+            break
+    if not has_safe_turn:
+        return False
+
     # Count the safe pocket within two steps. This rejects a narrow cul-de-sac.
     queue = deque([(tile, 0)])
     seen = {tile}
@@ -191,8 +283,15 @@ def bomb_escape_options(observation, hypothetical, max_moves=MAX_BOMB_ESCAPE_MOV
     start = (me["x"], me["y"])
     board = observation["board"]
     bombs = list(observation["bombs"])
-    bombs.append(hypothetical)
+    if not any((b["x"], b["y"], b["owner"]) ==
+               (hypothetical["x"], hypothetical["y"], hypothetical["owner"])
+               for b in bombs):
+        bombs.append(hypothetical)
     blast = chained_blast_cells(board, bombs)
+    explosion_tick = effective_detonation_tick(board, bombs, hypothetical)
+    deadline = min(max_moves, explosion_tick - observation["tick"] - 1)
+    if deadline < 1:
+        return {}
     projectile_hazards = projectile_cells(observation)
     external_hazards = set(projectile_hazards)
     external_hazards.update((f["x"], f["y"]) for f in observation["flames"])
@@ -208,8 +307,9 @@ def bomb_escape_options(observation, hypothetical, max_moves=MAX_BOMB_ESCAPE_MOV
     own_chain_positions = {position for position in own_chain}
     external_bombs = [b for b in observation["bombs"]
                       if (b["x"], b["y"]) not in own_chain_positions]
+    external_ticks = [effective_detonation_tick(board, bombs, b) for b in external_bombs]
     soonest_external_fuse = min(
-        (b["explode_at"] - observation["tick"] for b in external_bombs),
+        (tick - observation["tick"] for tick in external_ticks),
         default=SIZE * SIZE,
     )
     if soonest_external_fuse <= max_moves:
@@ -235,12 +335,12 @@ def bomb_escape_options(observation, hypothetical, max_moves=MAX_BOMB_ESCAPE_MOV
                                         blocked, previous)):
                 routes[first_direction] = ("move_" + first_direction, depth, tile)
                 break
-            if depth >= max_moves:
+            if depth >= deadline:
                 continue
             x, y = tile
             for _, (nx, ny) in tile_neighbors(x, y):
                 neighbor = (nx, ny)
-                if (neighbor in visited or not open_floor(board, nx, ny)
+                if (neighbor == start or neighbor in visited or not open_floor(board, nx, ny)
                         or neighbor in blocked or neighbor in external_hazards):
                     continue
                 visited.add(neighbor)
@@ -262,12 +362,14 @@ def emergency_bomb_escape(observation, bomb, max_moves=8, blocked=None):
     external.update((f["x"], f["y"]) for f in observation["flames"])
     other_bombs = [b for b in bombs if (b["x"], b["y"]) != (bomb["x"], bomb["y"])]
     soonest_other = min(
-        (b["explode_at"] - observation["tick"] for b in other_bombs),
+        (effective_detonation_tick(board, bombs, b) - observation["tick"]
+         for b in other_bombs),
         default=SIZE * SIZE,
     )
     if soonest_other <= max_moves:
         external.update(chained_blast_cells(board, bombs, other_bombs))
-    remaining = bomb["explode_at"] - observation["tick"]
+    explosion_tick = effective_detonation_tick(board, bombs, bomb)
+    remaining = explosion_tick - observation["tick"]
     deadline = min(max_moves, max(0, remaining - 1))
 
     queue = deque([(start, None, 0)])
@@ -306,14 +408,16 @@ def route_to_bomb_refuge(observation, bomb, goal, max_moves=8, blocked=None):
     external.update((f["x"], f["y"]) for f in observation["flames"])
     other_bombs = [b for b in bombs if (b["x"], b["y"]) != (bomb["x"], bomb["y"])]
     soonest_other = min(
-        (b["explode_at"] - observation["tick"] for b in other_bombs),
+        (effective_detonation_tick(board, bombs, b) - observation["tick"]
+         for b in other_bombs),
         default=SIZE * SIZE,
     )
     if soonest_other <= max_moves:
         external.update(chained_blast_cells(board, bombs, other_bombs))
     blocked = blocked or set()
 
-    remaining = bomb["explode_at"] - observation["tick"]
+    explosion_tick = effective_detonation_tick(board, bombs, bomb)
+    remaining = explosion_tick - observation["tick"]
     deadline = min(max_moves, max(0, remaining - 1))
     queue = deque([(start, None, 0)])
     visited = {start}
@@ -370,6 +474,65 @@ class Bot:
         self.pending_bomb = False
         self.last_bomb_tick = -100
         self.bomb_escape_goal = None
+        self.known_bomb = None
+        self.known_bomb_board = None
+        self.remembered_flame_cells = set()
+        self.remembered_flames_expire_at = -1
+
+    def _record_bomb_plant(self, observation, here):
+        self.known_bomb = {
+            "x": here[0], "y": here[1],
+            "owner": observation["self"]["id"],
+            # The action resolves on the next tick; the fuse starts then.
+            "explode_at": observation["tick"] + 1 + BOMB_FUSE_TICKS,
+        }
+        self.known_bomb_board = [row[:] for row in observation["board"]]
+
+    def _observation_with_bomb_memory(self, observation):
+        """Retain our bomb and its final flames even when line of sight is lost."""
+        tick = observation["tick"]
+        me_id = observation["self"]["id"]
+        bombs = [dict(b) for b in observation["bombs"]]
+        visible_own = next((b for b in bombs if b["owner"] == me_id), None)
+        if visible_own is not None:
+            self.known_bomb = dict(visible_own)
+            self.known_bomb_board = [row[:] for row in observation["board"]]
+
+        known = self.known_bomb
+        if known is not None:
+            x, y = known["x"], known["y"]
+            visible = observation.get("visible", [])
+            tile_visible = (0 <= y < len(visible) and 0 <= x < len(visible[y])
+                            and visible[y][x])
+            still_listed = any((b["x"], b["y"], b["owner"]) ==
+                               (x, y, known["owner"]) for b in bombs)
+            if not still_listed and (tile_visible or tick >= known["explode_at"]):
+                explosion_tick = tick if tile_visible else known["explode_at"]
+                board = self.known_bomb_board or observation["board"]
+                self.remembered_flame_cells = conservative_blast_cells(board, known)
+                self.remembered_flames_expire_at = explosion_tick + BOMB_FLAME_TICKS
+                self.known_bomb = None
+                self.known_bomb_board = None
+                self.bomb_escape_goal = None
+            elif not still_listed:
+                bombs.append(dict(known))
+
+        # Add the remembered blast as a conservative flame footprint. Treat
+        # unseen crates as open because another explosion may have removed them.
+        if tick + 1 < self.remembered_flames_expire_at:
+            flames = [dict(f) for f in observation["flames"]]
+            existing = {(f["x"], f["y"]) for f in flames}
+            for x, y in self.remembered_flame_cells - existing:
+                flames.append({"x": x, "y": y,
+                               "expires_at": self.remembered_flames_expire_at})
+        else:
+            self.remembered_flame_cells.clear()
+            flames = [dict(f) for f in observation["flames"]]
+
+        updated = dict(observation)
+        updated["bombs"] = bombs
+        updated["flames"] = flames
+        return updated
 
     def _update_memory(self, observation):
         me = observation["self"]
@@ -474,6 +637,67 @@ class Bot:
             choices.append((nearest, -home_distance, "move_" + direction))
         return max(choices)[2] if choices else "wait"
 
+    def _combat_action(self, observation, here, closest_distance):
+        """Keep blaster pressure while repositioning to a safe firing lane."""
+        me = observation["self"]
+        enemies = observation["opponents"]
+        if not enemies:
+            return None
+        if me["weapon"] != "blaster":
+            return "switch"
+
+        shot = line_shot(observation)
+        if shot and me["cooldown"] == 0:
+            self.phase = "combat"
+            return shot
+
+        # Deadeye closes distance aggressively. Move to a clear lane at
+        # medium range instead of retreating all the way to the corner.
+        goals = firing_positions(observation, enemies)
+        if goals:
+            close_tiles = {
+                (x, y)
+                for enemy in enemies
+                for y in range(max(0, enemy["y"] - 2), min(SIZE, enemy["y"] + 3))
+                for x in range(max(0, enemy["x"] - 2), min(SIZE, enemy["x"] + 3))
+                if abs(x - enemy["x"]) + abs(y - enemy["y"]) <= 2
+            }
+            action = route_to(
+                observation, goals,
+                blocked=self._temporary_blocks() | close_tiles,
+            )
+            if action:
+                self.phase = "combat"
+                return action
+
+        # If cooldown or terrain prevents a firing-lane move, break alignment
+        # and increase distance rather than standing still to trade shots.
+        board = observation["board"]
+        danger = known_danger(observation)
+        bombs = {(b["x"], b["y"]) for b in observation["bombs"]}
+        occupied = {(e["x"], e["y"]) for e in enemies}
+        choices = []
+        for direction, tile in tile_neighbors(*here):
+            x, y = tile
+            if (not open_floor(board, x, y) or tile in danger or tile in bombs
+                    or tile in occupied or tile in self._temporary_blocks()):
+                continue
+            nearest = min(abs(x - e["x"]) + abs(y - e["y"]) for e in enemies)
+            breaks_lane = all(x != e["x"] and y != e["y"] for e in enemies)
+            exits = sum(
+                1 for _, (nx, ny) in tile_neighbors(x, y)
+                if open_floor(board, nx, ny) and (nx, ny) not in danger
+                and (nx, ny) not in bombs and (nx, ny) not in occupied
+            )
+            choices.append((nearest, breaks_lane, exits, "move_" + direction))
+        if choices:
+            self.phase = "combat"
+            return max(choices)[3]
+        if closest_distance is not None and closest_distance <= 3:
+            self.phase = "retreat"
+            return self._dodge_action(observation, here)
+        return None
+
     def _retreat_action(self, observation, here):
         if self.home == here:
             if observation["opponents"]:
@@ -516,7 +740,8 @@ class Bot:
                 routes = bomb_escape_options(
                     observation, hypothetical, blocked=self._temporary_blocks()
                 )
-                if len(routes) >= 2:
+                refuges = {route[2] for route in routes.values()}
+                if len(routes) >= 2 and len(refuges) >= 2:
                     return hypothetical
         return None
 
@@ -534,6 +759,7 @@ class Bot:
     def _decide(self, observation):
         me = observation["self"]
         here, took_damage = self._update_memory(observation)
+        observation = self._observation_with_bomb_memory(observation)
         owned_bombs = [b for b in observation["bombs"] if b["owner"] == me["id"]]
 
         # An active bomb outranks combat or exploration. Re-plan the exit each
@@ -581,6 +807,39 @@ class Bot:
             self.phase = "retreat"
             self.pending_bomb = False
 
+        # Do not keep fighting or scouting while standing in any visible or
+        # remembered bomb-chain footprint. Escape before the earliest fuse.
+        bomb_hazards = chained_blast_cells(observation["board"], observation["bombs"])
+        active_flames = {
+            (f["x"], f["y"]) for f in observation["flames"]
+            if f.get("expires_at", observation["tick"] + 2) > observation["tick"] + 1
+        }
+        if here in bomb_hazards:
+            threatening = [
+                bomb for bomb in observation["bombs"]
+                if here in chained_blast_cells(
+                    observation["board"], observation["bombs"], seeds=[bomb]
+                )
+            ]
+            if threatening:
+                bomb = min(
+                    threatening,
+                    key=lambda b: effective_detonation_tick(
+                        observation["board"], observation["bombs"], b
+                    ),
+                )
+                self.phase = "retreat"
+                escape = emergency_bomb_escape(
+                    observation, bomb, max_moves=8,
+                    blocked=self._temporary_blocks(),
+                )
+                if escape:
+                    return escape
+                return self._dodge_action(observation, here)
+        elif here in active_flames:
+            self.phase = "retreat"
+            return self._dodge_action(observation, here)
+
         enemies = observation["opponents"]
         enemy_distances = [path_distance(observation["board"], here, (e["x"], e["y"]), limit=8)
                            for e in enemies]
@@ -597,6 +856,7 @@ class Bot:
                     self.pending_bomb = False
                     self.last_bomb_tick = observation["tick"]
                     self._remember_bomb_refuge(observation, opportunity)
+                    self._record_bomb_plant(observation, here)
                     return "fire_n"
                 self.pending_bomb = True
                 return "switch"
@@ -610,20 +870,24 @@ class Bot:
                 self.pending_bomb = False
                 self.last_bomb_tick = observation["tick"]
                 self._remember_bomb_refuge(observation, opportunity)
+                self._record_bomb_plant(observation, here)
                 return "fire_n"
             self.pending_bomb = False
             if me["weapon"] == "bomb":
                 return "switch"
 
-        # Shoot from range, then withdraw rather than pursuing into contact.
+        # Resume blaster pressure once the bomb is no longer active. This
+        # follows urgent projectile and bomb escape handling above.
+        if me["weapon"] == "bomb":
+            return "switch"
+
+        # Engage visible opponents from a clear, medium-range firing lane.
+        # Close threats still get bomb consideration above, then the bot
+        # dodges or flanks instead of magneting toward the enemy.
         if enemies:
-            shot = line_shot(observation)
-            if (shot and me["weapon"] == "blaster" and me["cooldown"] == 0
-                    and not is_close):
-                self.phase = "retreat"
-                return shot
-            if closest_distance is not None and closest_distance > 3:
-                self.phase = "retreat"
+            action = self._combat_action(observation, here, closest_distance)
+            if action is not None:
+                return action
 
         if self.phase == "retreat":
             action = self._retreat_action(observation, here)
