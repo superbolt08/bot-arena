@@ -806,6 +806,9 @@ class Bot:
         if took_damage:
             self.phase = "retreat"
             self.pending_bomb = False
+            # Break the immediate firing lane once when a shot lands; combat
+            # may resume next tick from a safer tile.
+            return self._dodge_action(observation, here)
 
         # Do not keep fighting or scouting while standing in any visible or
         # remembered bomb-chain footprint. Escape before the earliest fuse.
@@ -839,6 +842,20 @@ class Bot:
         elif here in active_flames:
             self.phase = "retreat"
             return self._dodge_action(observation, here)
+
+        # Use visible health and shield pickups to recover before trading away
+        # the last HP. Only route through currently known safe tiles.
+        useful_pickups = [p for p in observation["pickups"]
+                          if (p["kind"] == "health" and me["hp"] < 3)
+                          or (p["kind"] == "shield" and not me["shield"])]
+        if useful_pickups:
+            target = min(useful_pickups, key=lambda p: abs(p["x"]-here[0]) + abs(p["y"]-here[1]))
+            if abs(target["x"]-here[0]) + abs(target["y"]-here[1]) <= 6:
+                action = route_to(observation, (target["x"], target["y"]),
+                                  blocked=self._temporary_blocks())
+                if action:
+                    self.phase = "retreat"
+                    return action
 
         enemies = observation["opponents"]
         enemy_distances = [path_distance(observation["board"], here, (e["x"], e["y"]), limit=8)
