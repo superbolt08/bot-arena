@@ -1,6 +1,16 @@
 # Bot Arena
 
-A local, retro-styled arena for building and testing autonomous Python bots. Two players by default; three- and four-player free-for-all, local human play, elimination and deathmatch are supported.
+A local, retro-styled arena for building your own Python bot and learning through fair experiments. Write a strategy, expose meaningful parameters, test different opponents, and use evidence to decide what to change.
+
+## Start with the idea
+
+Read [Why Bot Arena?](docs/TEAM_PITCH.md), a shared project brief for participants, mentors and the team. The goal is to understand algorithms, controlled experiments, overfitting and generalization—not just win one match.
+
+Your loop: predict → run development matches → inspect → change one thing → compare versions → freeze and test fresh conditions. Follow [the six-step workflow](learning/WORKFLOW.md), try [the parameter starter](learning/PARAMETERS.md), and keep [an experiment notebook](learning/EXPERIMENT_TEMPLATE.md).
+
+Manual tuning is experimentation, not automatically ML. Actual learning requires a procedure that fits decisions or parameters from data. An [optional imitation-learning example](learning/IMITATION_LEARNING.md) is available; automated parameter learning and a [100-match adaptation league](learning/LEARNING_LEAGUE.md) are proposed, not implemented.
+
+Basic Python is enough for the 2–4 hour core workshop. The game supports two players by default, optional three-/four-player free-for-all, local human play, elimination and deathmatch.
 
 ## Run it
 
@@ -17,11 +27,14 @@ python run.py
 
 Open **http://127.0.0.1:8000**. On Windows, use `py -m venv .venv` and `.venv\Scripts\activate` instead of the first two commands. The engine, viewer and process transport use cross-platform APIs; this prototype has been verified on macOS, not yet on Windows/Linux.
 
+The app opens on **Welcome**, with objectives, the experiment process, a starter download and readable repository guides. Use Arena to watch a match and Experiment Lab to evaluate frozen versions.
+
 For frontend development, run `python run.py` and `npm run dev` in separate terminals. Vite proxies the API and WebSocket connection to port 8000. Reload the Python server after backend changes or after creating the first production frontend build.
 
 ## What is included
 
 - Seeded 15×15 arena with simultaneous movement, blasters, bombs, destructible crates and supply drops.
+- Welcome page, in-app Markdown guides and a parameterized starter strategy.
 - 2–4 participants; one participant can be a keyboard-controlled human.
 - Real-time WebSocket viewer, bot-view toggle, pause, single-step and speed controls.
 - Four reference bots, Python bot upload and optional JSON model upload.
@@ -33,19 +46,25 @@ For frontend development, run `python run.py` and `npm run dev` in separate term
 
 The match viewer and benchmarks use the **same engine**. Fast evaluation removes rendering and wall-clock pacing; it does not change the rules.
 
+## Learning workshop and team proposal
+
+For Python beginners, start with the [2–4 hour workshop pack](learning/README.md): the student-owned strategy workflow, concepts, parameter exercise, experiment template, context for coding assistants and curated reading.
+
+For participants and planning, see [the shared project brief](docs/TEAM_PITCH.md) and [learning tools roadmap](docs/LEARNING_STUDIO_SPEC.md). Experiment Lab (formerly Training Lab) evaluates frozen bots; it does not automatically adjust their parameters. The optional tree trainer uses the CLI below.
+
 ## First bot
 
-Download the starter from Bot Library, or edit `examples/starter_bot.py`:
+Download the parameter starter from Welcome, or edit [examples/parameter_bot.py](examples/parameter_bot.py). Its complete `Bot` class includes these manually chosen preferences:
 
 ```python
-class Bot:
-    def choose_action(self, observation):
-        me = observation["self"]
-        enemies = observation["opponents"]
-        return "move_e"
+PARAMETERS = {
+    "retreat_health": 1,
+    "aggression": 0.7,
+    "pickup_priority": 0.4,
+}
 ```
 
-Use **Upload bot**, select your `.py` file, give it a name and confirm that you trust the code. It is validated and registered as a new version. Choose it in Match Setup or Training Lab.
+Use **Upload bot**, select your `.py` file, give it a name and confirm that you trust the code. It is validated and registered as a new version. Choose it in Match Setup or Experiment Lab.
 
 Bot files must define `Bot`, support a no-argument constructor and implement `choose_action(observation)`. Instance fields persist within a match and reset between matches. Initialization has a five-second deadline. Each decision has a 100 ms deadline. Prints go to stderr and do not corrupt the action protocol. A timed-out or crashed bot waits for the remaining match; the error appears in the UI and evaluation report. Invalid action strings become `wait` and increment the invalid-action count. A blocked but valid movement is not an invalid action.
 
@@ -68,7 +87,7 @@ Keyboard input follows the same one-action-per-tick rule as bots. A fire action 
 
 See [the full rules](docs/RULES.md). Defaults: 200 ms ticks, three HP, one active bomb per player, a ten-tick bomb fuse, full-axis blasts blocked by walls/the first crate, three-tick (0.6-second) flames and a five-tick blaster cooldown. Each explosion deals 2 damage at most once per player, including later entry into its flames. Elimination ends at 450 ticks (90 seconds); deathmatch at 900 ticks (three minutes). Numerical balance is provisional.
 
-## A working ML experiment
+## Optional: a working imitation-learning experiment
 
 With the virtual environment activated:
 
@@ -98,7 +117,7 @@ python -m pip install -r requirements-rl.txt
 
 ## Evaluation
 
-Choose a candidate, 1–3 opponents, a seed start and a match count in Training Lab. Maps repeat in groups of four; spawn geometry rotates each match and seat assignments cycle. Use multiples of 12 for 3-player evaluations to balance seat and corner combinations. Same configuration and bot versions reproduce deterministic bots' results, apart from OS-related decision timeouts. Uploaded bots must seed their own randomness.
+Choose a candidate, 1–3 opponents, a seed start and a match count in Experiment Lab. Maps repeat in groups of four; spawn geometry rotates each match and seat assignments cycle. Use multiples of 12 for 3-player evaluations to balance seat and corner combinations. Same configuration and bot versions reproduce deterministic bots' results, apart from OS-related decision timeouts. Uploaded bots must seed their own randomness.
 
 Win rate uses **all games including draws** as the denominator. The 95% Wilson interval is a rough descriptive interval; repeated maps and related opponents are correlated, so it is not a rigorous independent-sample guarantee. Placement in elimination uses survival duration with shared ranks for same-tick eliminations; deathmatch uses kills minus suicides. Inspect draw rate, survivability, failures and opponents separately. The UI stores experiments so you can switch between versions; JSON export supports deeper analysis. There is no automated significance test or ranking league yet.
 
@@ -126,7 +145,8 @@ arena/       Engine, SDK, reference bots, runner, API, evaluation and training
 viewer/      React + TypeScript UI and pixel-style canvas renderer
 examples/    Uploadable starter and learned bots
 tests/       Engine, process and API verification
-docs/        Rules and observation contract
+docs/        Shared project brief, rules, observation contract and learning roadmap
+learning/    Strategy workflow, parameter guide, workshop, context and optional ML tracks
 data/        Generated local bots, replays, reports and model artifacts
 ```
 

@@ -24,6 +24,22 @@ def test_upload_requires_explicit_trust():
         assert r.status_code==400
 
 
+def test_learning_guides_are_allowlisted_and_downloadable():
+    with TestClient(app) as client:
+        index=client.get('/api/guides').json()
+        assert len(index)>=10
+        for entry in index:
+            result=client.get('/api/guides/'+entry['id'])
+            assert result.status_code==200
+            assert result.json()['path']==entry['path']
+            assert result.json()['content'].startswith('# ')
+        assert client.get('/api/guides/secret').status_code==404
+        assert client.get('/api/guides/%2e%2e%2fREADME.md').status_code==404
+        download=client.get('/api/guides/experiment?download=true')
+        assert download.status_code==200 and 'attachment' in download.headers['content-disposition']
+        assert client.get('/api/examples/parameter_bot.py').status_code==200
+
+
 def test_live_match_control_and_replay():
     with TestClient(app) as client:
         r=client.post('/api/matches',json={'bots':['random','hunter'],'seed':81})

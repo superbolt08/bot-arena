@@ -18,6 +18,7 @@ from .runner import Match, ExternalBot, ROOT
 from .evaluation import evaluate
 from .sdk import ACTIONS
 from .engine import Game
+from .guides import GUIDES
 
 DATA=ROOT/"data"
 for folder in ["bots","replays","evaluations"]: (DATA/folder).mkdir(parents=True,exist_ok=True)
@@ -269,9 +270,27 @@ def replay(rid:str):
 
 @app.get("/api/examples/{name}")
 def example(name:str):
-    allowed={"starter_bot.py":ROOT/"examples/starter_bot.py","learned_bot.py":ROOT/"examples/learned_bot.py","model.json":DATA/"models/model.json","training_report.json":DATA/"models/training_report.json"}
+    allowed={"starter_bot.py":ROOT/"examples/starter_bot.py","parameter_bot.py":ROOT/"examples/parameter_bot.py","learned_bot.py":ROOT/"examples/learned_bot.py","model.json":DATA/"models/model.json","training_report.json":DATA/"models/training_report.json"}
     if name not in allowed or not allowed[name].exists(): raise HTTPException(404,"Run the training example first to generate this artifact")
     return FileResponse(allowed[name],filename=name)
+
+
+@app.get("/api/guides")
+def guide_index():
+    return [{"id":key,"path":path,"title":title} for key,(path,title) in GUIDES.items()]
+
+
+@app.get("/api/guides/{name}")
+def guide(name:str,download:bool=False):
+    if name not in GUIDES:
+        raise HTTPException(404,"Guide not found")
+    relative,title=GUIDES[name]
+    path=ROOT/relative
+    if not path.is_file():
+        raise HTTPException(404,"Guide not found")
+    if download:
+        return FileResponse(path,media_type="text/markdown",filename=path.name)
+    return {"id":name,"path":relative,"title":title,"content":path.read_text(encoding="utf-8")}
 
 
 if (ROOT/"dist").exists():
