@@ -246,7 +246,20 @@ async def start_evaluation(config:EvalConfig):
 
 @app.get("/api/evaluations")
 def list_evaluations():
-    stored={p.stem:json.loads(p.read_text()) for p in (DATA/"evaluations").glob("*.json")}
+    stored={}
+    for path in (DATA/"evaluations").glob("*.json"):
+        try:
+            item=json.loads(path.read_text())
+        except (OSError,ValueError):
+            continue
+        config=item.get("config") if isinstance(item,dict) else None
+        # The evaluations folder has historically also contained training artifacts.
+        # Only expose records with the shape Experiment Lab can render.
+        if (isinstance(config,dict) and isinstance(config.get("candidate"),str)
+                and isinstance(config.get("opponents"),list)
+                and isinstance(item.get("created_at"),(int,float))
+                and item.get("status") in ("running","complete","failed")):
+            stored[path.stem]=item
     stored.update(jobs)
     return sorted(stored.values(),key=lambda j:j["created_at"],reverse=True)[:20]
 

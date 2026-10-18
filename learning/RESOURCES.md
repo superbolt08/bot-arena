@@ -16,7 +16,7 @@ Read [the workflow](WORKFLOW.md), [parameter guide](PARAMETERS.md) and [experime
 
 ## After the workshop
 
-- [TF-Agents: multi-armed bandit introduction](https://www.tensorflow.org/agents/tutorials/bandits_tutorial) — focus on exploration versus exploitation. In the proposed match-level learner, a parameter configuration is an arm and a fresh game supplies feedback. This is a concept reference; the project does not require TensorFlow or ship this trainer. Read [the 100-match proposal](LEARNING_LEAGUE.md) for scope and safeguards.
+- [TF-Agents: multi-armed bandit introduction](https://www.tensorflow.org/agents/tutorials/bandits_tutorial) — focus on exploration versus exploitation. In the [Hit & Run parameter learner](PARAMETER_LEARNING.md), each scouting limit is an arm and a fresh game supplies feedback. The project uses a small standard-library implementation; TensorFlow is not required. Read [the 100-match proposal](LEARNING_LEAGUE.md) for the broader scope and safeguards.
 
 - [Gymnasium: agent-training tutorials](https://gymnasium.farama.org/v1.1.1/tutorials/) — find the tabular Q-learning examples. Use them to learn observations, actions, rewards and exploration before attempting full arena RL. These are separate environments, not drop-in Bot Arena trainers.
 - [PettingZoo: Parallel API](https://pettingzoo.farama.org/api/parallel/) — compare `reset`, joint `step` and per-agent outputs with `arena/parallel_env.py`. An API adapter is infrastructure; it does not train a policy by itself.

@@ -6,7 +6,7 @@ This is a proposal for follow-on work, not a list of shipped features. The main 
 
 Welcome introduces the objectives, six-step process and parameter starter. Repository Markdown guides are readable in the app. Arena shows real-time matches and replays; Experiment Lab (formerly Training Lab) evaluates frozen bot versions. The learner can keep version comparisons in the experiment notebook.
 
-A CLI imitation-learning example exists as an optional track. It does not train arbitrary student strategies, and the current batch evaluator does not update any model.
+A CLI imitation-learning example fits a tree to teacher labels. A narrow CLI bandit learns Hit & Run's scouting limit from match rewards and exports a frozen bot. Neither trainer supports arbitrary student strategies, and the current batch evaluator does not update models.
 
 ## Phase 1: make experiments easier to compare
 
@@ -18,7 +18,7 @@ Acceptance: a beginner completes one controlled comparison and can reproduce its
 
 ## Phase 2: learn the student's parameters
 
-Keep strategy code fixed, declare a parameter schema and allow a small set of valid configurations. A bounded trainer selects configurations using match feedback and saves the initial and final policies plus its learning log. Start with fixed opponents and independent round resets.
+Keep strategy code fixed, declare a parameter schema and allow a small set of valid configurations. A bounded trainer selects configurations using match feedback and saves the initial and final policies plus its learning log. Start with fixed opponents and independent round resets. The Hit & Run scouting-limit bandit is an initial CLI prototype; it does not yet train arbitrary student bots or run from the app.
 
 Add explicit lifecycle hooks: load learner state, choose a match configuration, receive a bounded round-end result, update between rounds, and export a frozen policy. The action deadline is not the training-update budget. Keep worker processes, output paths, logs and artifact versions isolated; do not rely on arbitrary file writes from a bot to implement persistence.
 

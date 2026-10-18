@@ -12,6 +12,7 @@ This workshop is for basic Python skills and little or no ML, in a 2–4 hour se
 - [Workshop agenda](WORKSHOP.md) — a practical path through a 2–4 hour session.
 - [Experiment notebook](EXPERIMENT_TEMPLATE.md) — preserve settings, results and failure analysis.
 - [Algorithms, tuning and learning](ML_CONCEPTS.md) — what the ML concepts mean here.
+- [Learn a Hit & Run parameter](PARAMETER_LEARNING.md) — an actual match-outcome bandit exercise.
 - [Project context for coding assistants](PROJECT_CONTEXT.md) — help an assistant support your reasoning.
 - [Resources](RESOURCES.md) — reading with specific questions to answer.
 
@@ -21,11 +22,11 @@ The app opens on **Welcome**, with the project brief and these Markdown guides r
 
 | Available now | Proposed, not implemented |
 | --- | --- |
-| Your own rules and manually chosen strategy parameters | Automated parameter learning for your own bot |
-| Parameter starter, upload and 2–4 player matches | Persistent learning state and feedback across rounds |
+| Your own rules and manually chosen strategy parameters; a CLI bandit prototype for Hit & Run's scouting limit | Automated parameter learning for arbitrary student bots |
+| Parameter starter, upload and 2–4 player matches | In-app and resumable learning for arbitrary bots |
 | Batch evaluation, reports and replays | A/B comparison dashboard and enforced held-out final tests |
-| An optional CLI imitation-learning example | A 100-match adaptation league |
+| Optional CLI imitation learning and parameter learning | A 100-match adaptation league |
 
-Manual tuning teaches experimentation, overfitting and generalization, but is not automatically machine learning. The [learning-league proposal](LEARNING_LEAGUE.md) explains how a learning procedure could choose parameters from battle feedback. The existing [imitation example](IMITATION_LEARNING.md) is an optional, different route to fitting a model.
+Manual tuning teaches experimentation, overfitting and generalization, but is not automatically machine learning. The [Hit & Run bandit guide](PARAMETER_LEARNING.md) shows a small learner updating estimates from battle outcomes. The [imitation example](IMITATION_LEARNING.md) is a different route that fits a decision tree to teacher labels. The broader [learning-league proposal](LEARNING_LEAGUE.md) describes what would be needed to generalize this to a 100-match program.
 
 Start with your own strategy and the core workflow. You do not need to copy a teacher bot to participate.

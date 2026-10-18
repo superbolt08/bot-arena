@@ -37,7 +37,7 @@ Use [the full workflow](../learning/WORKFLOW.md) and [experiment notebook](../le
 
 Writing rules and adjusting numbers manually is experimental algorithm development. It teaches important ML evaluation ideas, but it is not automatically machine learning.
 
-A learning procedure could choose parameters from battle feedback while your strategy code stays fixed. The [100-match learning-league proposal](../learning/LEARNING_LEAGUE.md) describes that possible extension. It is not available yet, and improvement within a small match budget is not guaranteed.
+A learning procedure can choose parameters from battle feedback while your strategy code stays fixed. The [Hit & Run bandit exercise](../learning/PARAMETER_LEARNING.md) is a small working example: it learns which scouting limit to use from match outcomes. It is not a general trainer for arbitrary bots, and improvement within a small match budget is not guaranteed. The [100-match learning-league proposal](../learning/LEARNING_LEAGUE.md) describes the broader extension.
 
 There is also an existing, optional [imitation-learning example](../learning/IMITATION_LEARNING.md) that fits a decision tree to a reference bot's tactical labels. It is genuine fitting, but it copies a small teacher policy and keeps movement helpers handwritten. It is a different learning track, not a requirement to abandon your own strategy.
 
@@ -47,7 +47,7 @@ Welcome introduces the project and opens the repository guides. Download a param
 
 The prototype supports 2–4 players, two game modes and local human play. For the first lesson, use two-player elimination batches against different styles; multiplayer games can be a capstone.
 
-Automated parameter learning, cross-round learner state, automatic paired comparisons and enforced hidden final tests are still proposed. Match statistics do not automatically update a model.
+The CLI bandit updates its estimates between matches and writes a frozen bot. Experiment Lab match statistics still do not automatically update a model. General training for arbitrary uploaded bots, automatic paired comparisons and enforced hidden final tests remain proposed.
 
 ## A workshop that fits an afternoon
 
@@ -59,7 +59,7 @@ We value clear reasoning, reproducibility and honest limitations alongside a wor
 
 Keep the first release focused on this complete experiment loop. Freeze rules and reference versions during the workshop, prepare a separate final test, and rehearse on the actual laptops before committing to match budgets.
 
-The next tools should make experiments easier to record and compare, then add a bounded parameter-learning track. Start with a few strategy settings rather than promise full neural game mastery. The [roadmap](LEARNING_STUDIO_SPEC.md) separates current features from future work.
+The next tools should make experiments easier to record and compare, then generalize the bounded parameter-learning prototype to student-owned bots. Start with a few strategy settings rather than promise full neural game mastery. The [roadmap](LEARNING_STUDIO_SPEC.md) separates current features from future work.
 
 For an adaptation competition, agree on equal match/compute budgets, allowed feedback, persistent state and update timing before advertising it. Keep frozen-policy tournaments and learning leagues distinct.
 

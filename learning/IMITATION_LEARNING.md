@@ -1,4 +1,4 @@
-# Optional track: train an imitation model
+# How to train an imitation model
 
 This is an optional supervised-learning track, not the main workshop. For the student-owned strategy and parameter workflow, start with [the core workshop](WORKSHOP.md). Installation and an instructor dry run happen beforehand; do not spend the workshop installing dependencies. Pair participants when useful.
 

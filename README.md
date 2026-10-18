@@ -8,7 +8,7 @@ Read [Why Bot Arena?](docs/TEAM_PITCH.md), a shared project brief for participan
 
 Your loop: predict → run development matches → inspect → change one thing → compare versions → freeze and test fresh conditions. Follow [the six-step workflow](learning/WORKFLOW.md), try [the parameter starter](learning/PARAMETERS.md), and keep [an experiment notebook](learning/EXPERIMENT_TEMPLATE.md).
 
-Manual tuning is experimentation, not automatically ML. Actual learning requires a procedure that fits decisions or parameters from data. An [optional imitation-learning example](learning/IMITATION_LEARNING.md) is available; automated parameter learning and a [100-match adaptation league](learning/LEARNING_LEAGUE.md) are proposed, not implemented.
+Manual tuning is experimentation, not automatically ML. Actual learning requires a procedure that fits decisions or parameters from data. The optional [imitation-learning example](learning/IMITATION_LEARNING.md) fits a decision tree, and a small [Hit & Run parameter bandit](learning/PARAMETER_LEARNING.md) learns a scouting limit from match outcomes. A generalized [100-match adaptation league](learning/LEARNING_LEAGUE.md) remains proposed work.
 
 Basic Python is enough for the 2–4 hour core workshop. The game supports two players by default, optional three-/four-player free-for-all, local human play, elimination and deathmatch.
 
@@ -41,6 +41,7 @@ For frontend development, run `python run.py` and `npm run dev` in separate term
 - Batch evaluation with rotated seats/corners, replay links, uncertainty intervals and version history.
 - JSON match replays, export/import and timeline scrubbing.
 - CPU imitation-learning example with separate train, validation and evaluation seeds.
+- CLI bandit trainer that selects a Hit & Run scouting limit from match outcomes and checks a frozen result on held-out seeds.
 - Optional PettingZoo parallel environment adapter for further RL experiments.
 - Engine, runner and API tests.
 
@@ -50,7 +51,7 @@ The match viewer and benchmarks use the **same engine**. Fast evaluation removes
 
 For Python beginners, start with the [2–4 hour workshop pack](learning/README.md): the student-owned strategy workflow, concepts, parameter exercise, experiment template, context for coding assistants and curated reading.
 
-For participants and planning, see [the shared project brief](docs/TEAM_PITCH.md) and [learning tools roadmap](docs/LEARNING_STUDIO_SPEC.md). Experiment Lab (formerly Training Lab) evaluates frozen bots; it does not automatically adjust their parameters. The optional tree trainer uses the CLI below.
+For participants and planning, see [the shared project brief](docs/TEAM_PITCH.md) and [learning tools roadmap](docs/LEARNING_STUDIO_SPEC.md). Experiment Lab evaluates frozen bots; it does not automatically adjust their parameters. The two optional model trainers use the CLI.
 
 ## First bot
 

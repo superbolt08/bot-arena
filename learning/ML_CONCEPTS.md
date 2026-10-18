@@ -8,7 +8,7 @@
 
 **Learning from data:** a procedure changes a decision model or policy parameters from examples or rewards. The student still designs the representation, algorithm and evaluation. The learned component does not replace critical thinking.
 
-The [parameter starter](PARAMETERS.md) supports the first two activities today. A trainer that learns its settings from matches is [proposed](LEARNING_LEAGUE.md), not implemented. The optional decision-tree [imitation example](IMITATION_LEARNING.md) already fits a different model from teacher labels.
+The [parameter starter](PARAMETERS.md) supports the first two activities. The [Hit & Run bandit](PARAMETER_LEARNING.md) is a narrow, working example that updates scouting-limit reward estimates after matches and selects among three fixed values. The optional decision-tree [imitation example](IMITATION_LEARNING.md) fits a different model from teacher labels. A general trainer for arbitrary student bots and the broader [100-match learning league](LEARNING_LEAGUE.md) remain future work.
 
 ## The ideas you should take away
 

@@ -13,6 +13,7 @@ GUIDES = {
     "rules": ("docs/RULES.md", "Game rules"),
     "bot-api": ("docs/BOT_API.md", "Bot observation contract"),
     "imitation": ("learning/IMITATION_LEARNING.md", "Optional: train an imitation model"),
+    "parameter-learning": ("learning/PARAMETER_LEARNING.md", "Learn a Hit & Run parameter from matches"),
     "roadmap": ("docs/LEARNING_STUDIO_SPEC.md", "Learning tools roadmap"),
     "learning-league": ("learning/LEARNING_LEAGUE.md", "Proposed: a 100-match learning league"),
 }

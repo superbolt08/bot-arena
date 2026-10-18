@@ -38,7 +38,7 @@ Follow [the six-step workflow](WORKFLOW.md) for the full procedure and [the para
 - Dry-run the starter upload, a short batch and replay inspection on intended laptops. Measure runtime before choosing the match budget.
 - Freeze rules and opponent versions during comparisons. Prepare development settings and a separate final set; the app does not enforce that boundary automatically.
 - Prepare baseline reports as an explicitly labeled fallback, not as live student results. Keep installation outside teaching time.
-- Explain that metrics/replays do not update a model. The shipped starter uses manual preferences; automated parameter learning is [proposed](LEARNING_LEAGUE.md), not implemented.
+- Explain that Experiment Lab metrics/replays do not automatically update a model. The optional [Hit & Run bandit](PARAMETER_LEARNING.md) does update estimates between matches; it is a narrow CLI exercise, not a general trainer for student uploads.
 - Keep public hosted uploads out of this workshop: the local process runner is not a malicious-code sandbox.
 - Ask participants to disclose AI assistance and explain their own strategy and experiment. Use [the context guide](PROJECT_CONTEXT.md) to keep assistants focused.
 

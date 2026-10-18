@@ -16,9 +16,10 @@ The workshop teaches algorithms, parameters, controlled experiments, overfitting
 - `arena/engine.py` and `arena/sdk.py` define the seeded game and rules.
 - `arena/bots.py` provides reference bots, features and fixed tactical helpers.
 - `arena/train.py` is an optional imitation-learning CLI, with `--games` and `--output`; it is not a trainer for arbitrary student strategies.
+- `arena/train_hit_and_run.py` is a match-level epsilon-greedy bandit for `MAX_SCOUT_MOVES` in `examples/hit_and_run_bot.py`; it writes estimates, match logs, held-out comparisons and a frozen uploadable bot.
 - `examples/learned_bot.py` interprets that tree artifact.
 - `arena/parallel_env.py` is an optional PettingZoo adapter, not a complete RL pipeline.
-- Automated parameter search, persistent learner updates, final-test enforcement and the 100-match learning league are proposals, not shipped capabilities.
+- Generalized parameter learning for arbitrary bots, in-app training, resumable state, final-test enforcement and the 100-match learning league are not implemented.
 
 Rules v0.2: 15×15 board, simultaneous 200 ms ticks, 2–4 participants. Bombs have a two-second fuse, full-axis cross stopped by walls/the first crate, and 0.6-second flames. Each explosion can hit a player once for 2 damage; starting health is three.
 
@@ -32,7 +33,7 @@ Rules v0.2: 15×15 board, simultaneous 200 ms ticks, 2–4 participants. Bombs h
 - Preserve uploaded bots, models and experiment history. Never overwrite an artifact the student wants to retain.
 - Do not silently rewrite the entire strategy or manufacture a rising training curve.
 - Uploads run trusted Python locally. A subprocess is not a malicious-code sandbox; do not propose public hosting without a new security scope.
-- For future learning leagues, explicitly define round feedback, persistent state, update budgets and frozen evaluation. Current bot instances reset between matches.
+- For broader learning leagues, explicitly define round feedback, persistent state, update budgets and frozen evaluation. Current bot instances reset between matches; the Hit & Run CLI trainer performs its updates outside the bot process between matches.
 
 ## Suggested assistant prompt
 

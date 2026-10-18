@@ -1,10 +1,10 @@
 # Could a bot learn over 100 matches?
 
-Yes, a small parameterized policy could adapt between rounds within a 100-match budget. This is a proposed learning track, not a shipped feature or a guarantee of improvement. One hundred matches means one hundred completed rounds, not one hundred simulation ticks.
+Yes, a small parameterized policy could adapt between rounds within a 100-match budget. A narrow CLI bandit now demonstrates that idea for Hit & Run's scouting limit; a general-purpose 100-match learning league remains proposed work, not a shipped feature or a guarantee of improvement. One hundred matches means one hundred completed rounds, not one hundred simulation ticks. See the [working parameter-learning exercise](PARAMETER_LEARNING.md) for the smaller implementation.
 
 ## A manageable first version
 
-Keep a student's strategy code fixed and define a small set of parameter configurations—for example, cautious, balanced and aggressive variants. A learner chooses one configuration for a match, observes a reward, updates its estimates and chooses again next round.
+Keep a student's strategy code fixed and define a small set of parameter configurations—for example, cautious, balanced and aggressive variants. A learner chooses one configuration for a match, observes a reward, updates its estimates and chooses again next round. The Hit & Run example does this for three scouting limits against a fixed mix of reference bots, then exports a frozen configuration.
 
 This can be formulated as a match-level multi-armed bandit: each arm is a complete strategy configuration, and a fresh match supplies feedback. It teaches exploration versus exploitation without requiring the student to learn every primitive game action. See [TensorFlow's bandit introduction](https://www.tensorflow.org/agents/tutorials/bandits_tutorial) for the concept; this proposal does not require TensorFlow as a dependency.
 

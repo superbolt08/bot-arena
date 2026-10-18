@@ -38,4 +38,4 @@ Finish with your hypothesis, the result, a failure case, the limitations and one
 
 ## Where actual learning can enter
 
-Manual iteration is algorithm development informed by evidence. A learning procedure can later select parameters from battle outcomes while the strategy code stays fixed. The [100-match learning-league proposal](LEARNING_LEAGUE.md) describes that extension; it is not implemented. The [optional imitation track](IMITATION_LEARNING.md) is an existing example of fitting a different decision model from teacher demonstrations.
+Manual iteration is algorithm development informed by evidence. The [Hit & Run bandit exercise](PARAMETER_LEARNING.md) is a small actual learner: it updates parameter reward estimates from battle outcomes while strategy code stays fixed. It is limited to one strategy and a few scouting settings. The [optional imitation track](IMITATION_LEARNING.md) fits a different decision model from teacher demonstrations; the broader [100-match learning league](LEARNING_LEAGUE.md) is still a proposal.
