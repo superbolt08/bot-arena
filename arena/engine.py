@@ -336,6 +336,11 @@ class Game:
                 scores=[p.kills-p.suicides for p in self.players]
                 leaders=[i for i,s in enumerate(scores) if s==max(scores)]
                 self.winner=leaders[0] if len(leaders)==1 else None
+            elif len(survivors)>1:
+                scores={pid:(self.players[pid].hp,self.players[pid].damage_dealt) for pid in survivors}
+                best=max(scores.values())
+                leaders=[pid for pid,score in scores.items() if score==best]
+                self.winner=leaders[0] if len(leaders)==1 else None
         if self.done:
             self.result="draw" if self.winner is None else "win"
             self.event("ROUND DRAW" if self.winner is None else self.players[self.winner].name+" WINS","result")

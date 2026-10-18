@@ -1,4 +1,4 @@
-# Prototype rules v0.2
+# Prototype rules v0.3
 
 ## Tick resolution
 
@@ -24,7 +24,7 @@ Movement cannot enter solid walls, crates or existing bombs. A player may leave 
 - Switching never resets blaster cooldown. Weapon firing removes respawn protection, including unsuccessful fire attempts.
 - Damage is simultaneous: a dying player's already-fired attack still resolves.
 - Shield consumes the strongest incoming hit that tick; remaining hits still apply. On equal-strength hits, lower owner ID is consumed first (fixed tie-break).
-- Kill credit goes to the largest post-shield damage contributor on the fatal tick. Tied contributors use lower seat ID. A self-credited elimination counts as suicide, not a kill. There are no assists in v0.2.
+- Kill credit goes to the largest post-shield damage contributor on the fatal tick. Tied contributors use lower seat ID. A self-credited elimination counts as suicide, not a kill. There are no assists.
 - Damage dealt measures nominal post-shield attack damage; damage taken is capped by remaining HP.
 
 ## Items
@@ -45,7 +45,7 @@ The local app is not an adversarial competition security boundary: trusted code 
 
 ## Modes
 
-Elimination: last living player wins. If nobody survives a tick, draw. At tick 450, two or more survivors draw regardless of HP or damage; a sole survivor still wins.
+Elimination: last living player wins. If nobody survives a tick, draw. At the time limit, survivors are ranked by remaining HP, then damage dealt. A unique leader wins; a tie on both measures is a draw. A sole survivor still wins immediately.
 
 Deathmatch: three-minute match. Respawn after 15 ticks on an available floor tile outside current bomb blast areas, active flames and projectile positions, favoring distance from living enemies. If no safe tile exists, postpone respawn. Respawn grants three HP, blaster, no shield, and ten ticks of protection. Existing bombs remain until detonation. Most kills minus suicides wins at tick 900; a tied top score is a draw.
 

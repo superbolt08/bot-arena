@@ -86,7 +86,7 @@ Keyboard input follows the same one-action-per-tick rule as bots. A fire action 
 
 ## Rules and timing
 
-See [the full rules](docs/RULES.md). Defaults: 200 ms ticks, three HP, one active bomb per player, a ten-tick bomb fuse, full-axis blasts blocked by walls/the first crate, three-tick (0.6-second) flames and a five-tick blaster cooldown. Each explosion deals 2 damage at most once per player, including later entry into its flames. Elimination ends at 450 ticks (90 seconds); deathmatch at 900 ticks (three minutes). Numerical balance is provisional.
+See [the full rules](docs/RULES.md). Defaults: 200 ms ticks, three HP, one active bomb per player, a ten-tick bomb fuse, full-axis blasts blocked by walls/the first crate, three-tick (0.6-second) flames and a five-tick blaster cooldown. Each explosion deals 2 damage at most once per player, including later entry into its flames. Elimination ends at 450 ticks (90 seconds); timeout survivors are ranked by HP, then damage dealt. Deathmatch ends at 900 ticks (three minutes). Numerical balance is provisional.
 
 ## Optional: a working imitation-learning experiment
 

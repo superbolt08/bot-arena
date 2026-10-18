@@ -245,10 +245,18 @@ def test_no_diagonal_corner_peeking():
     assert line_visible(g.board,(3,3),(4,4))
 
 
-def test_timeout_is_draw_even_with_health_lead():
-    g=empty_game(max_ticks=1);g.players[1].hp=1
+def test_elimination_timeout_tiebreaks_by_health_then_damage():
+    g=empty_game(max_ticks=1);g.players[0].damage_dealt=99;g.players[1].hp=2
     g.step({})
-    assert g.done and g.result=="draw" and g.winner is None
+    assert g.done and g.result=="win" and g.winner==0
+
+    g=empty_game(max_ticks=1);g.players[1].damage_dealt=1
+    g.step({})
+    assert g.winner==1
+
+    g=empty_game(max_ticks=1)
+    g.step({})
+    assert g.result=="draw" and g.winner is None
 
 
 def test_deathmatch_respawn_and_score():
@@ -282,7 +290,7 @@ def test_reference_matches_finish_and_replay(count):
     m=Match(ids,seed=71,max_ticks=60)
     result=m.run()
     assert result["done"] and len(result["players"])==count
-    assert m.replay()["rules_version"]==RULES_VERSION=="0.2"
+    assert m.replay()["rules_version"]==RULES_VERSION=="0.3"
     clone=Game([p.name for p in m.game.players],71,max_ticks=60)
     for actions in m.action_log: clone.step(actions)
     assert clone.snapshot()==result
