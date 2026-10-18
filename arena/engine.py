@@ -36,8 +36,9 @@ class Player:
     timeouts: int = 0
 
 
-def line_visible(board, start, end):
-    """Supercover ray: walls/crates occlude; diagonal corner peeking is blocked."""
+def line_visible(board, start, end, opaque=()):
+    """Supercover ray: terrain and optional opaque entities occlude beyond themselves."""
+    opaque=set(opaque)
     x, y = start
     tx, ty = end
     dx, dy = tx - x, ty - y
@@ -47,7 +48,8 @@ def line_visible(board, start, end):
     while ix < nx or iy < ny:
         cross = (1 + 2 * ix) * ny - (1 + 2 * iy) * nx
         if cross == 0:
-            if board[y][x + sx] != "." or board[y + sy][x] != ".":
+            side_cells=((x+sx,y),(x,y+sy))
+            if any(board[cy][cx] != "." or (cx,cy) in opaque for cx,cy in side_cells):
                 return False
             x += sx
             y += sy
@@ -61,7 +63,7 @@ def line_visible(board, start, end):
             iy += 1
         if (x, y) == (tx, ty):
             return True
-        if board[y][x] != ".":
+        if board[y][x] != "." or (x,y) in opaque:
             return False
     return True
 
@@ -134,21 +136,25 @@ class Game:
         p = self.players[pid]
         visible = [[bool(full or (p.alive and line_visible(self.board, (p.x,p.y),(x,y))))
                     for x in range(SIZE)] for y in range(SIZE)]
+        screens={(q.x,q.y) for q in self.players if q.id!=pid and q.alive}
+        entity_visible = [[bool(full or (p.alive and line_visible(self.board, (p.x,p.y),(x,y),screens)))
+                           for x in range(SIZE)] for y in range(SIZE)]
         for y in range(SIZE):
             for x in range(SIZE):
                 if visible[y][x]:
                     self.memories[pid][y][x] = self.board[y][x]
                     self.last_seen[pid][y][x] = self.tick
-        seen = lambda obj: visible[obj["y"]][obj["x"]]
+        seen = lambda obj: entity_visible[obj["y"]][obj["x"]]
         return {
             "tick": self.tick, "seed": self.seed, "mode": self.mode, "max_ticks": self.max_ticks,
             "self": asdict(p), "board": copy.deepcopy(self.memories[pid]),
-            "visible": visible, "last_seen": copy.deepcopy(self.last_seen[pid]),
-            "opponents": [asdict(q) for q in self.players if q.id != pid and q.alive and visible[q.y][q.x]],
+            "visible": visible, "entity_visible": entity_visible,
+            "last_seen": copy.deepcopy(self.last_seen[pid]),
+            "opponents": [asdict(q) for q in self.players if q.id != pid and q.alive and entity_visible[q.y][q.x]],
             "bombs": [dict(b) for b in self.bombs if seen(b)],
             "projectiles": [dict(b) for b in self.projectiles if seen(b)],
             "flames": [dict(b) for b in self.flames if seen(b)],
-            "pickups": [{"x":x,"y":y,"kind":k} for (x,y),k in self.pickups.items() if visible[y][x]],
+            "pickups": [{"x":x,"y":y,"kind":k} for (x,y),k in self.pickups.items() if entity_visible[y][x]],
             "supply_drop": copy.deepcopy(self.drop), "actions": list(ACTIONS),
         }
 

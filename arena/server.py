@@ -173,7 +173,7 @@ async def live(ws:WebSocket,mid:str):
                     state={"tick":m.game.tick,"seed":m.game.seed,"mode":m.game.mode,"max_ticks":m.game.max_ticks,
                            "done":False,"winner":None,"result":None,"board":obs["board"],
                            "players":[obs["self"]]+obs["opponents"],"bombs":obs["bombs"],"projectiles":obs["projectiles"],
-                           "flames":obs["flames"],"pickups":obs["pickups"],"visible":obs["visible"],"events":[],"supply_drop":obs["supply_drop"]}
+                           "flames":obs["flames"],"pickups":obs["pickups"],"visible":obs["visible"],"entity_visible":obs["entity_visible"],"events":[],"supply_drop":obs["supply_drop"]}
                     views={str(pid):obs}
                 else: views={str(p.id):m.game.observe(p.id) for p in m.game.players}
                 payload={"state":state,"views":views,"errors":m.errors,"paused":m.paused,"speed":m.speed}
