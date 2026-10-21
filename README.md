@@ -47,6 +47,16 @@ For frontend development, run `python run.py` and `npm run dev` in separate term
 
 The match viewer and benchmarks use the **same engine**. Fast evaluation removes rendering and wall-clock pacing; it does not change the rules.
 
+## Organizer competitions
+
+In **Experiment Lab**, switch **Experiment format** to **Round robin**. Select a roster of 2–16 bot versions and run every pair, with balanced seats/corners, standings, matchup scores and replays. Completed matches are saved; pause/resume and interrupted-run recovery are supported while submission/runtime fingerprints remain unchanged.
+
+Choose **Knockout** for a single-elimination bracket with byes, seeded/shuffled placement, semifinal-to-final progression and a real champion. Tied series play up to two additional balanced eight-game blocks, then pause for an explicitly recorded organizer ruling. Publish that ruling policy before the event.
+
+For a live audience in either format, open **Audience view**: introduce each pairing and trigger suspenseful result reveals. Knockout includes a spoiler-controlled bracket overview and a gold grand-final champion reveal with trophy/confetti. The host controls every reveal; tied results are not silently broken. Use fullscreen where supported, or maximize the window.
+
+Download the private organizer report for your records, or the **Anonymous replay pack** to share the same identity-redacted results/replays with every team. Round robin also has an optional individual ZIP per participant, with anonymous opponent aliases, that team's replays and a per-opponent performance report. These are metrics for analysis, not a record of in-game learning: both formats evaluate frozen submissions without carrying learned updates across matches. See [the competition guide](docs/COMPETITIONS.md) for contents, scoring, recovery and privacy limits.
+
 ## Learning workshop and team proposal
 
 For Python beginners, start with the [2–4 hour workshop pack](learning/README.md): the student-owned strategy workflow, concepts, parameter exercise, experiment template, context for coding assistants and curated reading.

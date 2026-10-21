@@ -45,6 +45,10 @@ There is also an existing, optional [imitation-learning example](../learning/IMI
 
 Welcome introduces the project and opens the repository guides. Download a parameter starter, write or extend its rules, upload a version and watch it in the Arena. Experiment Lab evaluates frozen bots and saves reports/replays so you can compare them in your notes.
 
+Organizers can switch Experiment Lab to [Round robin](COMPETITIONS.md), select a roster and run every pair with balanced starts. Standings, matchup scores, pause/resume, completed-match recovery and a separate identity-redacted replay pack support weekly feedback sessions. Share the same release ZIP with everyone while keeping administrator reports private. For the final session, select **Knockout**: a real single-elimination bracket with byes, seeded/shuffled placement and winners advancing through semifinals to the final. Tied series play two extra balanced blocks before requiring a recorded organizer ruling; publish that policy beforehand. Adaptive cross-match learning is not implemented.
+
+For an in-person showcase, Audience view works in both formats and lets the host reveal each series result at their own pace. The knockout bracket hides later-round identities until their feeder results are revealed. The grand final gets a larger gold trophy reveal and a brief confetti animation, with reduced-motion support. All results come from completed matches; the presentation does not change scoring or invent winners.
+
 The prototype supports 2–4 players, two game modes and local human play. For the first lesson, use two-player elimination batches against different styles; multiplayer games can be a capstone.
 
 The CLI bandit updates its estimates between matches and writes a frozen bot. Experiment Lab match statistics still do not automatically update a model. General training for arbitrary uploaded bots, automatic paired comparisons and enforced hidden final tests remain proposed.

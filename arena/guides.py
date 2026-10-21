@@ -2,6 +2,7 @@
 GUIDES = {
     "overview": ("README.md", "Repository overview"),
     "project-brief": ("docs/TEAM_PITCH.md", "Why Bot Arena?"),
+    "competitions": ("docs/COMPETITIONS.md", "Run competitions in Experiment Lab"),
     "start-here": ("learning/README.md", "Start here"),
     "workflow": ("learning/WORKFLOW.md", "Your six-step experiment loop"),
     "workshop": ("learning/WORKSHOP.md", "The 2–4 hour workshop"),

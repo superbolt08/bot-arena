@@ -29,3 +29,7 @@ Action strings: `wait`, `switch`, `move_n`, `move_s`, `move_w`, `move_e`, `fire_
 The upload UI accepts one optional JSON file, saved next to the bot as `model.json`. Use `Path(__file__).with_name("model.json")` to open it. Code files are limited to 256 KB and model files to 5 MB. More complex dependency bundles and binary models are deferred.
 
 The included learned bot interprets a plain JSON decision tree without importing scikit-learn in the worker. Training imports scikit-learn in the parent development environment. The tactics selected are `escape`, `attack`, `supply`, and `explore`; low-level execution uses the same pathfinding helper as the teacher. This shared helper is intentional so students can focus on the learned component.
+
+## Organizer competitions
+
+In Round robin and Knockout modes, visible players have neutral names (`Player 1`, `Player 2`); local seat IDs remain 0/1. The observation schema and visibility rules do not change. Uploaded source and model files are snapshotted for the run, with fresh worker instances/working copies for each match, including tiebreak games. Do not rely on scratch files or mutable model updates carrying across competition matches. These are frozen-submission evaluators, not a cross-match training protocol. See [the competition guide](COMPETITIONS.md).

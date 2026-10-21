@@ -3,6 +3,7 @@ import asyncio
 import hashlib
 import json
 import shutil
+import threading
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -19,6 +20,9 @@ from .evaluation import evaluate
 from .sdk import ACTIONS
 from .engine import Game
 from .guides import GUIDES
+from .competition import atomic_json, snapshot_entries, runtime_digest, verify_entries, run_round_robin, public_job, build_release, build_participant_release
+from .sdk import RULES_VERSION
+from .knockout import bracket_report, run_knockout
 
 DATA=ROOT/"data"
 for folder in ["bots","replays","evaluations"]: (DATA/folder).mkdir(parents=True,exist_ok=True)
@@ -29,6 +33,9 @@ for manifest in (DATA/"bots").glob("*/manifest.json"):
 matches={}
 jobs={}
 tasks=set()
+competition_stops={}
+release_lock=threading.Lock()
+STARTUP_DIGEST=runtime_digest()
 
 
 def save_replay(mid,match):
@@ -51,6 +58,7 @@ async def drive(mid):
 @asynccontextmanager
 async def lifespan(app):
     yield
+    for stop in competition_stops.values(): stop.set()
     for task in tasks: task.cancel()
     if tasks: await asyncio.gather(*tasks,return_exceptions=True)
     for match in matches.values(): match.close()
@@ -244,6 +252,170 @@ async def start_evaluation(config:EvalConfig):
     return job
 
 
+class RoundRobinConfig(BaseModel):
+    roster:List[str]=Field(min_length=2,max_length=16)
+    games_per_pair:int=Field(default=8,ge=8,le=80)
+    seed:int=10000
+    mode:str="elimination"
+    name:str=Field(default="Round robin",max_length=60)
+    individual_packs:bool=False
+
+
+def load_competition(jid):
+    if len(jid)!=32 or any(c not in "0123456789abcdef" for c in jid):
+        raise HTTPException(404,"Round robin not found")
+    if jid in jobs:
+        job=jobs[jid]
+    else:
+        path=DATA/"evaluations"/(jid+".json")
+        if not path.is_file(): raise HTTPException(404,"Round robin not found")
+        job=json.loads(path.read_text())
+        if job.get("status")=="running": job["status"]="interrupted"
+    if job.get("config",{}).get("kind") not in ("round_robin","knockout"):
+        raise HTTPException(404,"Round robin not found")
+    return job
+
+
+def launch_competition(job):
+    stop=threading.Event()
+    competition_stops[job["id"]]=stop
+    runner=run_knockout if job["config"]["kind"]=="knockout" else run_round_robin
+    task=asyncio.create_task(asyncio.to_thread(runner,job,DATA,stop))
+    tasks.add(task)
+    task.add_done_callback(tasks.discard)
+    def cleanup(_):
+        if competition_stops.get(job["id"]) is stop:
+            competition_stops.pop(job["id"],None)
+    task.add_done_callback(cleanup)
+
+
+@app.post("/api/round-robins")
+async def start_round_robin(config:RoundRobinConfig):
+    return await start_competition(config,"round_robin")
+
+
+class KnockoutConfig(RoundRobinConfig):
+    name:str=Field(default="Knockout tournament",max_length=60)
+    shuffle:bool=True
+
+
+@app.post("/api/knockouts")
+async def start_knockout(config:KnockoutConfig):
+    return await start_competition(config,"knockout")
+
+
+async def start_competition(config,kind):
+    if STARTUP_DIGEST!=runtime_digest(): raise HTTPException(409,"Backend sources changed; restart the server before starting a competition")
+    validate_ids(config.roster)
+    if "human" in config.roster: raise HTTPException(400,"Round robins require bots")
+    if len(set(config.roster))!=len(config.roster): raise HTTPException(400,"Choose each bot version once")
+    if config.mode not in ("elimination","deathmatch"): raise HTTPException(400,"Invalid mode")
+    if config.games_per_pair%8: raise HTTPException(400,"Use a multiple of eight games per pair to balance seats and corners")
+    total=(len(config.roster)-1)*config.games_per_pair if kind=="knockout" else len(config.roster)*(len(config.roster)-1)//2*config.games_per_pair
+    if total>2000: raise HTTPException(400,"Limit the run to 2,000 matches; reduce the roster or games per pair")
+    if any(j["status"]=="running" for j in jobs.values()): raise HTTPException(409,"An evaluation is already running")
+    jid=uuid.uuid4().hex
+    job={"id":jid,"status":"running","completed":0,"total":total,"created_at":time.time(),"rows":[],
+         "config":{"kind":kind,**config.model_dump()},"entries":{},
+         "rules_version":RULES_VERSION,"runtime_digest":runtime_digest()}
+    if kind=="knockout":
+        job["decisions"]=[]
+        job["report"]=bracket_report(job["config"],[])
+    jobs[jid]=job
+    try:
+        job["entries"]=await asyncio.to_thread(snapshot_entries,config.roster,registry,DATA/"competitions"/jid/"entries")
+        atomic_json(DATA/"evaluations"/(jid+".json"),job)
+    except Exception as exc:
+        job["status"]="failed";job["error"]="Submission snapshot failed: "+str(exc)[:200]
+        atomic_json(DATA/"evaluations"/(jid+".json"),job)
+        raise HTTPException(400,job["error"])
+    launch_competition(job)
+    return public_job(job)
+
+
+@app.post("/api/round-robins/{jid}/pause")
+@app.post("/api/knockouts/{jid}/pause")
+async def pause_round_robin(jid:str):
+    job=load_competition(jid)
+    stop=competition_stops.get(jid)
+    if job["status"]!="running" or stop is None: raise HTTPException(409,"This run is not active")
+    job["pause_requested"]=True
+    stop.set()
+    return public_job(job)
+
+
+@app.post("/api/round-robins/{jid}/resume")
+@app.post("/api/knockouts/{jid}/resume")
+async def resume_round_robin(jid:str):
+    job=load_competition(jid)
+    if job["status"] not in ("paused","interrupted","failed"): raise HTTPException(409,"This run cannot be resumed")
+    if any(j["status"]=="running" for j in jobs.values()): raise HTTPException(409,"An evaluation is already running")
+    try:
+        if job["runtime_digest"]!=runtime_digest() or STARTUP_DIGEST!=runtime_digest(): raise ValueError("Engine/runtime sources changed; restart and start a new run")
+        if len(job["entries"])!=len(job["config"]["roster"]): raise ValueError("Incomplete submission snapshot; start a new run")
+        verify_entries(job["entries"])
+    except (ValueError,OSError) as exc: raise HTTPException(409,str(exc))
+    job["status"]="running";job.pop("error",None);job.pop("pause_requested",None)
+    jobs[jid]=job
+    atomic_json(DATA/"evaluations"/(jid+".json"),job)
+    launch_competition(job)
+    return public_job(job)
+
+
+@app.get("/api/round-robins/{jid}/release")
+@app.get("/api/knockouts/{jid}/release")
+def round_robin_release(jid:str):
+    job=load_competition(jid)
+    if job["status"]!="complete": raise HTTPException(409,"Complete the run before releasing replays")
+    try:
+        with release_lock: path=build_release(job,DATA)
+    except (OSError,ValueError,KeyError) as exc: raise HTTPException(409,"Could not build release: "+str(exc)[:200])
+    return FileResponse(path,media_type="application/zip",filename="anonymous-competition.zip")
+
+
+@app.get("/api/round-robins/{jid}/participants/{bid}/release")
+def participant_round_robin_release(jid:str,bid:str):
+    job=load_competition(jid)
+    if job["config"].get("kind")!="round_robin": raise HTTPException(404,"Round robin not found")
+    if job["status"]!="complete": raise HTTPException(409,"Complete the run before releasing participant packs")
+    if not job["config"].get("individual_packs"): raise HTTPException(404,"Individual participant packs were not enabled")
+    if bid not in job["config"]["roster"]: raise HTTPException(404,"Participant not found")
+    try:
+        with release_lock: path,stem=build_participant_release(job,DATA,bid)
+    except (OSError,ValueError,KeyError) as exc:
+        raise HTTPException(409,"Could not build participant pack: "+str(exc)[:200])
+    return FileResponse(path,media_type="application/zip",filename=stem+"-feedback.zip")
+
+
+class BracketDecision(BaseModel):
+    series_id:str
+    winner:str
+    reason:str=Field(min_length=5,max_length=500)
+
+
+@app.post("/api/knockouts/{jid}/decision")
+async def decide_knockout(jid:str,decision:BracketDecision):
+    job=load_competition(jid)
+    if job["config"]["kind"]!="knockout" or job["status"]!="awaiting_decision":
+        raise HTTPException(409,"This bracket is not waiting for an organizer ruling")
+    if any(j["status"]=="running" for j in jobs.values()): raise HTTPException(409,"An evaluation is already running")
+    report=bracket_report(job["config"],job["rows"],job.get("decisions",[]))
+    node=next((n for n in report["series"] if n["id"]==decision.series_id),None)
+    if not node or node["status"]!="awaiting_decision" or decision.winner not in node["participants"] or len(decision.reason.strip())<5:
+        raise HTTPException(400,"Choose a tied series participant and record the ruling reason")
+    try:
+        if job["runtime_digest"]!=runtime_digest() or STARTUP_DIGEST!=runtime_digest():
+            raise ValueError("Engine/runtime sources changed; restart and start a new run")
+        verify_entries(job["entries"])
+    except (ValueError,OSError) as exc: raise HTTPException(409,str(exc))
+    job.setdefault("decisions",[]).append({**decision.model_dump(),"reason":decision.reason.strip(),"created_at":time.time()})
+    job["status"]="running"
+    jobs[jid]=job
+    atomic_json(DATA/"evaluations"/(jid+".json"),job)
+    launch_competition(job)
+    return public_job(job)
+
+
 @app.get("/api/evaluations")
 def list_evaluations():
     stored={}
@@ -255,21 +427,30 @@ def list_evaluations():
         config=item.get("config") if isinstance(item,dict) else None
         # The evaluations folder has historically also contained training artifacts.
         # Only expose records with the shape Experiment Lab can render.
-        if (isinstance(config,dict) and isinstance(config.get("candidate"),str)
-                and isinstance(config.get("opponents"),list)
+        if (isinstance(config,dict) and ((isinstance(config.get("candidate"),str)
+                and isinstance(config.get("opponents"),list)) or (config.get("kind") in ("round_robin","knockout") and isinstance(config.get("roster"),list)))
                 and isinstance(item.get("created_at"),(int,float))
-                and item.get("status") in ("running","complete","failed")):
+                and item.get("status") in ("running","complete","failed","paused","interrupted","awaiting_decision")):
+            if config.get("kind") in ("round_robin","knockout") and item["status"]=="running" and path.stem not in jobs:
+                item["status"]="interrupted"
             stored[path.stem]=item
     stored.update(jobs)
-    return sorted(stored.values(),key=lambda j:j["created_at"],reverse=True)[:20]
+    return [public_job(j) if j.get("config",{}).get("kind") in ("round_robin","knockout") else j
+            for j in sorted(stored.values(),key=lambda j:j["created_at"],reverse=True)[:20]]
 
 
 @app.get("/api/evaluations/{jid}")
 def evaluation(jid:str):
-    if jid in jobs: return jobs[jid]
+    if jid in jobs:
+        job=jobs[jid]
+        return public_job(job) if job.get("config",{}).get("kind") in ("round_robin","knockout") else job
     path=DATA/"evaluations"/(jid+".json")
     if not jid.isalnum() or not path.is_file(): raise HTTPException(404,"Evaluation not found")
-    return json.loads(path.read_text())
+    job=json.loads(path.read_text())
+    if job.get("config",{}).get("kind") in ("round_robin","knockout"):
+        if job.get("status")=="running": job["status"]="interrupted"
+        return public_job(job)
+    return job
 
 
 @app.get("/api/replays/{rid}")

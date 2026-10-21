@@ -75,7 +75,7 @@ class ExternalBot:
 
 
 class Match:
-    def __init__(self, bot_ids, registry=None, seed=42, mode="elimination", rotation=0, max_ticks=None, record=True):
+    def __init__(self, bot_ids, registry=None, seed=42, mode="elimination", rotation=0, max_ticks=None, record=True, anonymous=False):
         registry=registry or {}
         self.bot_ids=bot_ids
         self.rotation=rotation
@@ -89,6 +89,8 @@ class Match:
             self.close()
             raise
         names=["YOU" if b=="human" else registry.get(b,{}).get("name",{"random":"Wanderer","hunter":"Deadeye","survivor":"Sentinel","bomber":"Fuse"}.get(b,b)) for b in bot_ids]
+        if anonymous:
+            names=[f"Player {i+1}" for i in range(len(bot_ids))]
         self.game=Game(names,seed,mode,max_ticks,rotation)
         self.frames=[self.game.snapshot()] if record else []
         self.action_log=[]
