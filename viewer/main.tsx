@@ -145,15 +145,15 @@ function App(){
       socket.current?.close();setReplay(null);setReplayPlaying(false);setFeed([]);setBotErrors({});setSpeed(1);setPaused(false);
       const result=await post('/matches',{bots:ids,seed,mode});setMid(result.id);setState(result.state);setLiveFrames([{state:result.state,views:{}}]);setLiveFrameIndex(null);setPerspective(ids.includes('human')?String(ids.indexOf('human')):'all');
       const ws=new WebSocket(`${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/ws/matches/${result.id}`);socket.current=ws;
-      let lastTick=-1;
-      ws.onmessage=e=>{const p=JSON.parse(e.data);setState(p.state);setViews(p.views);setLiveFrames(frames=>{
+      let lastTick=-1;let matchFinished=false;
+      ws.onmessage=e=>{const p=JSON.parse(e.data);if(p.state.done)matchFinished=true;setState(p.state);setViews(p.views);setLiveFrames(frames=>{
           const frame={state:p.state,views:p.views||{}};
           if(frames.length&&frames[frames.length-1].state.tick===p.state.tick)return [...frames.slice(0,-1),frame];
           return [...frames,frame];
         });setPaused(p.paused);setSpeed(p.speed);setBotErrors(p.errors);
         if(p.state.tick!==lastTick){setFeed(f=>[...f,...p.state.events].slice(-80));lastTick=p.state.tick;}
       };
-      ws.onerror=()=>setError('Live connection interrupted. Stop and launch another match to reconnect.');
+      ws.onclose=e=>{if(!matchFinished&&e.code!==1000)setError('Live connection interrupted. Stop and launch another match to reconnect.');};
     }catch(e){notify(e)}finally{setBusy(false)}
   }
   async function control(body:any){if(!mid)return;try{const p=await post(`/matches/${mid}/control`,body);setPaused(p.paused);setSpeed(p.speed);}catch(e){notify(e)}}

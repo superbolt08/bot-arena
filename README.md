@@ -136,6 +136,8 @@ Metrics distinguish attempted post-shield damage dealt from HP actually lost. Ov
 
 To explore weapon balance, upload [Bomb First](examples/bomb_first_bot.py): it plants bombs with a planned escape, then switches to blaster support. Its [comparison guide](docs/BOMB_FIRST_BOT.md) explains how to run it against Deadeye and create a blaster-only control with the same navigation code.
 
+For a broader Round Robin, generate the [four-strategy roster](docs/STRATEGY_ROSTER.md): Crossfire combines bomb pressure with blaster follow-up, Breach & Shoot bombs crates until it sees an enemy, Range Keeper uses only the blaster, and Siege uses only bombs. Run `python -m examples.strategy_roster` to create the individual upload files.
+
 ## Replays and storage
 
 `data/bots/` stores imported code, model JSON and version manifests. `data/replays/` stores complete frames plus action logs. `data/evaluations/` stores finished reports. `data/models/` stores the worked learning example. These generated folders are gitignored. Replays intentionally contain omniscient match state for debugging; do not provide that data as a bot observation. JSON frame playback works without importing or executing the original bot code.
