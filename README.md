@@ -134,6 +134,8 @@ Win rate uses **all games including draws** as the denominator. The 95% Wilson i
 
 Metrics distinguish attempted post-shield damage dealt from HP actually lost. Overkill can therefore make damage-dealt totals exceed damage-taken totals. Training rewards never alter official scoring.
 
+To explore weapon balance, upload [Bomb First](examples/bomb_first_bot.py): it plants bombs with a planned escape, then switches to blaster support. Its [comparison guide](docs/BOMB_FIRST_BOT.md) explains how to run it against Deadeye and create a blaster-only control with the same navigation code.
+
 ## Replays and storage
 
 `data/bots/` stores imported code, model JSON and version manifests. `data/replays/` stores complete frames plus action logs. `data/evaluations/` stores finished reports. `data/models/` stores the worked learning example. These generated folders are gitignored. Replays intentionally contain omniscient match state for debugging; do not provide that data as a bot observation. JSON frame playback works without importing or executing the original bot code.

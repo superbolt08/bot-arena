@@ -91,6 +91,7 @@ function App(){
   const [mid,setMid]=useState<string|null>(null);const [views,setViews]=useState<Record<string,any>>({});const [perspective,setPerspective]=useState('all');
   const [paused,setPaused]=useState(false);const [speed,setSpeed]=useState(1);const [busy,setBusy]=useState(false);const [error,setError]=useState('');
   const [botErrors,setBotErrors]=useState<Record<string,string>>({});const [feed,setFeed]=useState<any[]>([]);
+  const [liveFrames,setLiveFrames]=useState<{state:State;views:Record<string,any>}[]>([]);const [liveFrameIndex,setLiveFrameIndex]=useState<number|null>(null);
   const [uploadOpen,setUploadOpen]=useState(false);const [botName,setBotName]=useState('');const [botFile,setBotFile]=useState<File|null>(null);const [modelFile,setModelFile]=useState<File|null>(null);const [trusted,setTrusted]=useState(false);
   const [candidate,setCandidate]=useState('survivor');const [opponents,setOpponents]=useState(['hunter']);const [games,setGames]=useState(12);const [evalSeed,setEvalSeed]=useState(10000);const [evalMode,setEvalMode]=useState('elimination');
   const [jobs,setJobs]=useState<any[]>([]);const [selectedJob,setSelectedJob]=useState<string|null>(null);
@@ -142,10 +143,14 @@ function App(){
     try{
       if(mid&&!state?.done)await post(`/matches/${mid}/control`,{stop:true});
       socket.current?.close();setReplay(null);setReplayPlaying(false);setFeed([]);setBotErrors({});setSpeed(1);setPaused(false);
-      const result=await post('/matches',{bots:ids,seed,mode});setMid(result.id);setState(result.state);setPerspective(ids.includes('human')?String(ids.indexOf('human')):'all');
+      const result=await post('/matches',{bots:ids,seed,mode});setMid(result.id);setState(result.state);setLiveFrames([{state:result.state,views:{}}]);setLiveFrameIndex(null);setPerspective(ids.includes('human')?String(ids.indexOf('human')):'all');
       const ws=new WebSocket(`${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/ws/matches/${result.id}`);socket.current=ws;
       let lastTick=-1;
-      ws.onmessage=e=>{const p=JSON.parse(e.data);setState(p.state);setViews(p.views);setPaused(p.paused);setSpeed(p.speed);setBotErrors(p.errors);
+      ws.onmessage=e=>{const p=JSON.parse(e.data);setState(p.state);setViews(p.views);setLiveFrames(frames=>{
+          const frame={state:p.state,views:p.views||{}};
+          if(frames.length&&frames[frames.length-1].state.tick===p.state.tick)return [...frames.slice(0,-1),frame];
+          return [...frames,frame];
+        });setPaused(p.paused);setSpeed(p.speed);setBotErrors(p.errors);
         if(p.state.tick!==lastTick){setFeed(f=>[...f,...p.state.events].slice(-80));lastTick=p.state.tick;}
       };
       ws.onerror=()=>setError('Live connection interrupted. Stop and launch another match to reconnect.');
@@ -169,9 +174,11 @@ function App(){
     setDownloadedReplays(found);setDownloadSearch('');
   }
   async function openDownloadedReplay(file:File){try{await loadReplayData(JSON.parse(await file.text()));}catch(e){notify(e)}}
-  const shown=replay?replay.frames[replayIndex] as State:state;
+  const liveFrame=liveFrameIndex===null?liveFrames[liveFrames.length-1]:liveFrames[liveFrameIndex];
+  const shown=replay?replay.frames[replayIndex] as State:liveFrame?.state||state;
+  const shownViews=replay?views:liveFrame?.views||views;
   let display=shown;
-  if(!replay&&shown&&perspective!=='all'&&views[perspective]){const o=views[perspective];display={...shown,board:o.board,players:[o.self,...o.opponents],bombs:o.bombs,projectiles:o.projectiles,flames:o.flames,pickups:o.pickups,visible:o.visible,entity_visible:o.entity_visible};}
+  if(!replay&&shown&&perspective!=='all'&&shownViews[perspective]){const o=shownViews[perspective];display={...shown,board:o.board,players:[o.self,...o.opponents],bombs:o.bombs,projectiles:o.projectiles,flames:o.flames,pickups:o.pickups,visible:o.visible,entity_visible:o.entity_visible};}
   const benchmarkJobs=jobs.filter(j=>!['round_robin','knockout'].includes(j.config.kind));
   const job=benchmarkJobs.find(j=>j.id===selectedJob)||benchmarkJobs[0];const report=job?.report;
   const reportReady=!!report&&Array.isArray(report.win_interval)&&report.win_interval.length===2&&!!report.averages&&Array.isArray(job?.config?.opponents);
@@ -198,7 +205,7 @@ function App(){
               <div className="board-wrap"><div className="board-coordinates"><span>A</span><span>D</span><span>G</span><span>J</span><span>M</span><span>O</span></div><ArenaCanvas state={display}/>{shown?.done&&!replay&&<div className="round-result"><Trophy size={25}/><strong>{shown.result==='stopped'?'MATCH STOPPED':shown.winner===null?'ROUND DRAW':shown.players.find(p=>p.id===shown.winner)?.name+' WINS'}</strong><span>{shown.tick} ticks · {minutes(shown.tick)} elapsed</span><button className="button primary" onClick={start}><RotateCcw size={15}/> Rematch</button></div>}</div>
               <div className="arena-bottom"><span><span className="mint">●</span> {replay?'RECORDED':mid?'SIMULATION':'READY TO LAUNCH'} <span className="subtle"> / SEED {shown?.seed??seed}</span></span><span>TICK <strong>{String(shown?.tick||0).padStart(3,'0')}</strong><span className="subtle"> / {shown?.max_ticks||450}</span></span></div>
               <div className="playback"><div className="playback-buttons"><button className="icon-button" aria-label={replay?(replayPlaying?'Pause replay':'Play replay'):(paused?'Resume match':'Pause match')} disabled={!mid&&!replay} onClick={()=>replay?setReplayPlaying(!replayPlaying):control({paused:!paused})}>{(replay?replayPlaying:active&&!paused)?<Pause size={17}/>:<Play size={17}/>}</button><button className="icon-button" aria-label="Advance one tick" disabled={!mid&&!replay} onClick={()=>replay?(setReplayPlaying(false),setReplayIndex(i=>Math.min(i+1,replay.frames.length-1))):control({step:true})}><SkipForward size={17}/></button></div>
-                {replay?<input aria-label="Replay position" type="range" min={0} max={replay.frames.length-1} value={replayIndex} onChange={e=>{setReplayPlaying(false);setReplayIndex(+e.target.value)}}/>:<div className="timeline"><i style={{width:`${(shown?.tick||0)/(shown?.max_ticks||450)*100}%`}}/></div>}
+                {replay?<input aria-label="Replay position" type="range" min={0} max={replay.frames.length-1} value={replayIndex} onChange={e=>{setReplayPlaying(false);setReplayIndex(+e.target.value)}}/>:<input aria-label="Live match position" type="range" min={0} max={Math.max(0,liveFrames.length-1)} value={liveFrameIndex===null?Math.max(0,liveFrames.length-1):Math.min(liveFrameIndex,Math.max(0,liveFrames.length-1))} disabled={!liveFrames.length} onChange={e=>{const index=+e.target.value;setLiveFrameIndex(index>=liveFrames.length-1?null:index)}}/>}
                 <select aria-label="Playback speed" className="speed-select" value={speed} onChange={e=>replay?setSpeed(+e.target.value):control({speed:+e.target.value})}>{[.5,1,2,5,10].map(s=><option key={s} value={s}>{s}×</option>)}</select><span className="time-left">{minutes(Math.max(0,(shown?.max_ticks||450)-(shown?.tick||0)))}</span>
               </div>
             </section>

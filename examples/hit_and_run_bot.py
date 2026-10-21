@@ -3,6 +3,7 @@
 The bot scouts toward the center for a short trip, shoots visible enemies from
 range, and retreats along its successful path. It only considers a bomb when a
 nearby enemy is in its projected blast and two roomy escape routes are known.
+Enemy bombs remain in memory through lost sight and their estimated flames.
 
 This is a hand-written strategy example, not a trained machine-learning model.
 """
@@ -478,6 +479,8 @@ class Bot:
         self.known_bomb_board = None
         self.remembered_flame_cells = set()
         self.remembered_flames_expire_at = -1
+        self.enemy_bombs = {}
+        self.enemy_flames = {}
 
     def _record_bomb_plant(self, observation, here):
         self.known_bomb = {
@@ -533,6 +536,70 @@ class Bot:
         updated["bombs"] = bombs
         updated["flames"] = flames
         return updated
+
+    def _observation_with_enemy_bomb_memory(self, observation):
+        """Keep previously seen enemy threats until their flames have expired."""
+        tick = observation["tick"]
+        me_id = observation["self"]["id"]
+        visible_enemies = [b for b in observation["bombs"] if b["owner"] != me_id]
+        seen = {(b["owner"], b["x"], b["y"]) for b in visible_enemies}
+        for bomb in visible_enemies:
+            self.enemy_bombs[(bomb["owner"], bomb["x"], bomb["y"])] = dict(bomb)
+
+        visibility = observation["entity_visible"]
+        for key, bomb in self.enemy_bombs.items():
+            if (key not in seen and visibility[bomb["y"]][bomb["x"]]
+                    and bomb["explode_at"] > tick):
+                # Its tile can be inspected and the bomb has disappeared.
+                # Allow for an early explosion and its lingering flames.
+                bomb["explode_at"] = tick
+
+        # An earlier known blast can shorten a remembered bomb's fuse too.
+        planned = [dict(b) for b in observation["bombs"] if b["owner"] == me_id]
+        enemy_entries = list(self.enemy_bombs.items())
+        planned.extend(dict(bomb) for _, bomb in enemy_entries)
+        # Old explosions only chain while their flames still exist. Expired
+        # entries become flame memory below without shortening a newer fuse.
+        zones = [blast_cells(observation["board"], b) for b in planned]
+        due = [b["explode_at"] for b in planned]
+        changed = True
+        while changed:
+            changed = False
+            for source, zone in enumerate(zones):
+                triggered_at = max(tick, due[source])
+                for target, bomb in enumerate(planned):
+                    if ((bomb["x"], bomb["y"]) in zone
+                            and triggered_at < due[source] + BOMB_FLAME_TICKS
+                            and due[target] > triggered_at):
+                        due[target] = triggered_at
+                        changed = True
+
+        bombs = [dict(b) for b in observation["bombs"] if b["owner"] == me_id]
+        offset = len(bombs)
+        for index, (key, bomb) in enumerate(enemy_entries):
+            bomb["explode_at"] = due[offset + index]
+            if tick >= bomb["explode_at"]:
+                expiry = bomb["explode_at"] + BOMB_FLAME_TICKS
+                if expiry > tick + 1:
+                    self.enemy_flames[key] = {
+                        "cells": conservative_blast_cells(observation["board"], bomb),
+                        "expires_at": expiry,
+                    }
+                del self.enemy_bombs[key]
+            else:
+                bombs.append(dict(bomb))
+
+        flames = [dict(f) for f in observation["flames"]]
+        existing = {(f["x"], f["y"]) for f in flames if f["expires_at"] > tick + 1}
+        for key, remembered in list(self.enemy_flames.items()):
+            if remembered["expires_at"] <= tick + 1:
+                del self.enemy_flames[key]
+                continue
+            for x, y in sorted(remembered["cells"] - existing):
+                flames.append({"x": x, "y": y, "owner": key[0],
+                               "expires_at": remembered["expires_at"]})
+            existing.update(remembered["cells"])
+        return dict(observation, bombs=bombs, flames=flames)
 
     def _update_memory(self, observation):
         me = observation["self"]
@@ -760,6 +827,7 @@ class Bot:
         me = observation["self"]
         here, took_damage = self._update_memory(observation)
         observation = self._observation_with_bomb_memory(observation)
+        observation = self._observation_with_enemy_bomb_memory(observation)
         owned_bombs = [b for b in observation["bombs"] if b["owner"] == me["id"]]
 
         # An active bomb outranks combat or exploration. Re-plan the exit each
