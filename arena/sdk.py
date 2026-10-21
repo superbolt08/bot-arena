@@ -17,7 +17,7 @@ class Action(str, Enum):
 
 DIRECTIONS = {"n": (0, -1), "s": (0, 1), "w": (-1, 0), "e": (1, 0)}
 ACTIONS = tuple(a.value for a in Action)
-RULES_VERSION = "0.3"
+RULES_VERSION = "0.4"
 BOMB_FUSE_TICKS = 10
 BOMB_FLAME_TICKS = 3
 BOMB_DAMAGE = 2

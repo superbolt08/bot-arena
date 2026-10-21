@@ -193,6 +193,7 @@ class Game:
             if p.alive:
                 p.survival_ticks += 1
         alive = [p for p in self.players if p.alive]
+        tick_start_positions = {p.id:(p.x,p.y) for p in alive}
         chosen = {}
         for p in alive:
             a = actions.get(p.id,"wait")
@@ -252,10 +253,22 @@ class Game:
             shot["x"] += shot["dx"]
             shot["y"] += shot["dy"]
             x,y = shot["x"],shot["y"]
-            # Moving onto an existing projectile also counts as a collision.
-            victims = [p for p in alive if p.id!=shot["owner"] and (p.x,p.y) in (old,(x,y))]
+            # Check the whole one-tile projectile step against both ends of
+            # each simultaneous player move. This prevents a player from
+            # evading a shot merely by vacating the tile it enters this tick.
+            path = (old,(x,y))
+            victims = [p for p in alive if p.id!=shot["owner"] and any(
+                position in path
+                for position in (tick_start_positions[p.id],(p.x,p.y))
+            )]
             if victims:
-                for p in victims: hits[p.id].append((1,shot["owner"],"blaster"))
+                # A projectile is absorbed by the first other player along
+                # its path. Old tile precedes the tile it enters.
+                victim = min(victims,key=lambda p:min(
+                    i for i,cell in enumerate(path)
+                    if cell in (tick_start_positions[p.id],(p.x,p.y))
+                ))
+                hits[victim.id].append((1,shot["owner"],"blaster"))
             elif 0<=x<SIZE and 0<=y<SIZE and self.board[y][x]==".":
                 remaining.append(shot)
         self.projectiles = remaining

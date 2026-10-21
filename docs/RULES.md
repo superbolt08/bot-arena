@@ -1,4 +1,4 @@
-# Prototype rules v0.3
+# Prototype rules v0.4
 
 ## Tick resolution
 
@@ -18,7 +18,7 @@ Movement cannot enter solid walls, crates or existing bombs. A player may leave 
 ## Combat
 
 - Three starting HP. Blaster equipped initially; one switch action changes weapon.
-- Blaster: 1 damage, projectile advances one tile each tick, five-tick cooldown. Stops at walls/crates and is absorbed by the first other player it hits; it does not destroy terrain or trigger bombs. Projectiles do not collide with one another. Owner is immune to their own projectile.
+- Blaster: 1 damage, projectile advances one tile each tick, five-tick cooldown. Stops at walls/crates and is absorbed by the first other player it hits; it does not destroy terrain or trigger bombs. Each projectile step checks both the tile it leaves and the tile it enters against players' positions before and after simultaneous movement, so moving out of a bullet's path during that tick does not evade the hit. When multiple players intersect one step, the first tile along the projectile's direction absorbs it. Projectiles do not collide with one another. Owner is immune to their own projectile.
 - Bomb: one active per owner, ten-tick (2-second) fuse, 2 damage, full-axis cross with no distance cap. Any fire direction places it. The blast includes its origin, stops at walls and at the first crate it destroys, and chains to bombs it reaches. Owner can be damaged.
 - Flames remain hazardous for three ticks (0.6 seconds): the detonation tick and the next two ticks. They expire before movement on `expires_at`. Players can move into flames, but each explosion hits each player at most once over its entire lifetime, even if they stay, move along the blast or leave and reenter. A shield-absorbed hit also counts; respawn protection prevents exposure while active. Distinct overlapping explosions can each deal damage. Bombs planted on active flames detonate immediately. Existing flames keep their original footprint even after crates disappear.
 - Switching never resets blaster cooldown. Weapon firing removes respawn protection, including unsuccessful fire attempts.

@@ -46,6 +46,62 @@ def test_simultaneous_lethal_shots_produce_draw():
     assert a.kills==b.kills==1
 
 
+@pytest.mark.parametrize("shot,escape",[
+    ((6,7,1,0),"move_n"),
+    ((8,7,-1,0),"move_n"),
+    ((7,6,0,1),"move_e"),
+    ((7,8,0,-1),"move_e"),
+])
+def test_blaster_hits_target_that_vacates_its_next_tile(shot,escape):
+    g=empty_game();owner,target=g.players
+    owner.x,owner.y=3,3
+    target.x,target.y=7,7
+    x,y,dx,dy=shot
+    g.projectiles=[{"x":x,"y":y,"dx":dx,"dy":dy,"owner":owner.id}]
+
+    g.step({target.id:escape})
+
+    assert (target.x,target.y)!=(7,7)
+    assert target.hp==2 and target.damage_taken==1
+    assert owner.damage_dealt==1
+    assert not g.projectiles
+
+
+def test_blaster_still_hits_stationary_target_and_is_absorbed():
+    g=empty_game();owner,target=g.players
+    owner.x,owner.y=3,5;target.x,target.y=5,5
+    g.projectiles=[{"x":4,"y":5,"dx":1,"dy":0,"owner":owner.id}]
+
+    g.step({})
+
+    assert target.hp==2 and owner.damage_dealt==1
+    assert not g.projectiles
+
+
+def test_blaster_hits_player_moving_onto_its_vacated_tile():
+    g=empty_game();owner,target=g.players
+    owner.x,owner.y=1,5;target.x,target.y=4,5
+    g.projectiles=[{"x":4,"y":5,"dx":1,"dy":0,"owner":owner.id}]
+
+    g.step({target.id:"move_w"})
+
+    assert (target.x,target.y)==(3,5)
+    assert target.hp==2 and owner.damage_dealt==1
+    assert not g.projectiles
+
+
+def test_blaster_is_absorbed_by_first_player_in_its_step():
+    g=empty_game(3);owner,first,second=g.players
+    owner.x,owner.y=3,5;first.x,first.y=5,5;second.x,second.y=6,5
+    g.projectiles=[{"x":5,"y":5,"dx":1,"dy":0,"owner":owner.id}]
+
+    g.step({})
+
+    assert first.hp==2 and second.hp==3
+    assert owner.damage_dealt==1
+    assert not g.projectiles
+
+
 def test_blast_chain_and_crate_stops_propagation():
     g=empty_game();g.board[5][8]="+"
     g.bombs=[{"x":3,"y":5,"owner":0,"explode_at":1},{"x":6,"y":5,"owner":1,"explode_at":50}]
@@ -290,7 +346,7 @@ def test_reference_matches_finish_and_replay(count):
     m=Match(ids,seed=71,max_ticks=60)
     result=m.run()
     assert result["done"] and len(result["players"])==count
-    assert m.replay()["rules_version"]==RULES_VERSION=="0.3"
+    assert m.replay()["rules_version"]==RULES_VERSION=="0.4"
     clone=Game([p.name for p in m.game.players],71,max_ticks=60)
     for actions in m.action_log: clone.step(actions)
     assert clone.snapshot()==result

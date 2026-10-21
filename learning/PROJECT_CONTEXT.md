@@ -21,7 +21,7 @@ The workshop teaches algorithms, parameters, controlled experiments, overfitting
 - `arena/parallel_env.py` is an optional PettingZoo adapter, not a complete RL pipeline.
 - Generalized parameter learning for arbitrary bots, in-app training, resumable state, final-test enforcement and the 100-match learning league are not implemented.
 
-Rules v0.3: 15×15 board, simultaneous 200 ms ticks, 2–4 participants. Bombs have a two-second fuse, full-axis cross stopped by walls/the first crate, and 0.6-second flames. Each explosion can hit a player once for 2 damage; starting health is three. Elimination timeouts rank survivors by remaining health, then damage dealt.
+Rules v0.4: 15×15 board, simultaneous 200 ms ticks, 2–4 participants. Blaster collision accounts for player positions before and after each simultaneous movement step. Bombs have a two-second fuse, full-axis cross stopped by walls/the first crate, and 0.6-second flames. Each explosion can hit a player once for 2 damage; starting health is three. Elimination timeouts rank survivors by remaining health, then damage dealt.
 
 ## How to assist
 

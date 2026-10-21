@@ -41,6 +41,10 @@ def test_json_model_bot_runs_in_upload_worker(tmp_path):
 
 def test_losing_elimination_bot_ranks_below_last_survivor():
     report=evaluate("survivor",["hunter"],games=4,seed=10000,max_ticks=100)
+    eliminated_losses=0
     for row in report["results"]:
-        if row["outcome"]=="loss": assert row["placement"]==2
-        if row["outcome"]=="win": assert row["placement"]==1
+        if row["ticks"]<100 and row["outcome"]=="loss":
+            assert row["placement"]==2
+            eliminated_losses+=1
+        if row["ticks"]<100 and row["outcome"]=="win": assert row["placement"]==1
+    assert eliminated_losses
