@@ -6,6 +6,7 @@ This workshop is for basic Python skills and little or no ML, in a 2–4 hour se
 
 ## Choose your starting point
 
+- [Participant onboarding](ONBOARDING.md) — setup, five orientation tasks and a first strategy experiment.
 - [Why this project?](../docs/TEAM_PITCH.md) — a shared brief for participants, mentors and the team.
 - [Your six-step workflow](WORKFLOW.md) — from prediction to a held-out final check.
 - [Your first parameterized bot](PARAMETERS.md) — download, understand and change the starter.

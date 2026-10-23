@@ -163,7 +163,7 @@ function App(){
   }catch(e){notify(e)}finally{setBusy(false)}}
   async function evaluate(){setBusy(true);setError('');try{const j=await post('/evaluations',{candidate,opponents,games,seed:evalSeed,mode:evalMode});if(autoSaveRuns)autoSaveRunIds.current.add(j.id);setSelectedJob(j.id);setJobs(v=>[j,...v]);}catch(e){notify(e)}finally{setBusy(false)}}
   async function loadReplayData(r:any){if(!isReplay(r))throw new Error('Invalid arena replay');if(active)await control({paused:true});setReplay(r);setReplayIndex(0);setReplayPlaying(false);setPerspective('all');setTab('Arena');}
-  async function openReplay(rid:string){try{await loadReplayData(await api('/replays/'+rid));}catch(e){notify(e)}}
+  async function openReplay(rid:string,names?:string[]){try{const data=await api('/replays/'+rid);if(names?.length&&Array.isArray(data?.frames)){data.frames=data.frames.map((frame:any)=>({...frame,players:frame.players.map((player:any,index:number)=>({...player,name:names[index]||player.name}))}));}await loadReplayData(data);}catch(e){notify(e)}}
   async function indexDownloadedReplays(files:File[]){
     const found:File[]=[];
     for(const file of files){

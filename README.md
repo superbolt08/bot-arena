@@ -12,6 +12,8 @@ Manual tuning is experimentation, not automatically ML. Actual learning requires
 
 Basic Python is enough for the 2–4 hour core workshop. The game supports two players by default, optional three-/four-player free-for-all, local human play, elimination and deathmatch.
 
+New participant? Follow the [participant onboarding guide](learning/ONBOARDING.md) for a short setup-to-first-experiment route. This README remains the source for installation details and project capabilities.
+
 ## Run it
 
 Requires Python 3.9+ and Node.js 20.19+ (or 22.12+). Python 3.11+ is recommended for a new installation.
