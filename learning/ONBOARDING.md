@@ -25,7 +25,15 @@ These are orientation exercises, not a score threshold. For a first comparison o
 
 ## 3. Read and sketch a strategy
 
-The built-in reference bots are implemented in [`arena/bots.py`](../arena/bots.py). Uploadable starter examples live in [`examples/`](../examples/); there is no `bots/` folder. Start from [`examples/parameter_bot.py`](../examples/parameter_bot.py) and its [guide](PARAMETERS.md), or download **Get the starter bot** from Welcome.
+The built-in reference bots are implemented in [`arena/bots.py`](../arena/bots.py): Wanderer, Deadeye, Sentinel, Fuse, Hit and Run, Crossfire, Breach & Shoot and Range Keeper. Select them in the Bot Library, Arena or Experiment Lab. Uploadable strategy examples also live in [`examples/`](../examples/); there is no `bots/` folder. Start from [`examples/parameter_bot.py`](../examples/parameter_bot.py) and its [guide](PARAMETERS.md), or download **Get the starter bot** from Welcome.
+
+The added examples are the memory-fixed HitnRun3 strategy under its participant-facing name **Hit and Run**, plus **Crossfire**, **Breach & Shoot** and **Range Keeper**. To export standalone copies of the roster strategies, the generator also creates **Siege**. Run this from the repository root with your Python environment activated:
+
+```bash
+python -m examples.strategy_roster
+```
+
+The standalone files are written to `data/strategy_roster/`, which is local generated data and is not committed to Git. This export step is optional; the four named strategies are already available in the app. See the [strategy roster guide](../docs/STRATEGY_ROSTER.md) for their styles and an example comparison.
 
 Before asking a coding assistant to implement anything, write a few sentences:
 

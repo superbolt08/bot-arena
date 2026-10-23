@@ -14,7 +14,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form, WebSocket, W
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from .bots import BOT_INFO, BUILTINS
+from .reference_bots import BOT_INFO, BUILTINS
 from .runner import Match, ExternalBot, ROOT
 from .evaluation import evaluate
 from .sdk import ACTIONS

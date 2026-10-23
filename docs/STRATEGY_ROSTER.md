@@ -2,6 +2,8 @@
 
 These four handwritten bots share the same threat memory and escape planner. Their weapon choices, fighting distances and objectives differ. They do not learn during a match.
 
+Crossfire, Breach & Shoot and Range Keeper are also available as built-in reference bots in the app. The export command below is still useful when you want standalone `.py` files to share or edit. Siege remains available through the generator as an additional strategy.
+
 | Bot | Weapons | Strategy |
 | --- | --- | --- |
 | Crossfire | Bomb + blaster | Plant to pressure a visible opponent at medium range, escape, then keep the blaster equipped and seek follow-up shots during the fuse. Take immediate close or finishing shots first. |
@@ -25,7 +27,7 @@ The editable policy source is [examples/strategy_roster.py](../examples/strategy
 
 ## Run the comparison
 
-1. Open **Experiment Lab → Round robin** and select the four bots. For stronger reference opponents, also include **Bomb First** and **hitnrun3 Memory Fix**.
+1. Open **Experiment Lab → Round robin** and select **Hit and Run**, **Crossfire**, **Breach & Shoot**, **Range Keeper**, **Deadeye** and **Fuse**. You can add **Bomb First** or generate **Siege** for more bomb-focused comparisons.
 2. Choose elimination, a development seed start and a multiple of eight games per pair. Six entries with eight games per pair produce **120 matches**; sixteen games per pair produce **240**.
 3. Every block of eight covers both seats and all four rotations on one map. Start with eight to inspect behavior, then use more seeds to assess consistency.
 4. Inspect per-opponent wins/draws/losses, damage, survival, self-bomb deaths, errors and replays. Verify that Crossfire actually follows bombs with blaster attacks and that Breach & Shoot switches on enemy contact.

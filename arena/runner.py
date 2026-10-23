@@ -5,7 +5,7 @@ import sys
 import threading
 import time
 from pathlib import Path
-from .bots import BUILTINS
+from .reference_bots import BUILTINS, BOT_INFO
 from .engine import Game
 from .sdk import ACTIONS, RULES_VERSION
 
@@ -88,7 +88,8 @@ class Match:
         except Exception:
             self.close()
             raise
-        names=["YOU" if b=="human" else registry.get(b,{}).get("name",{"random":"Wanderer","hunter":"Deadeye","survivor":"Sentinel","bomber":"Fuse"}.get(b,b)) for b in bot_ids]
+        labels={bot["id"]:bot["name"] for bot in BOT_INFO}
+        names=["YOU" if b=="human" else registry.get(b,{}).get("name",labels.get(b,b)) for b in bot_ids]
         if anonymous:
             names=[f"Player {i+1}" for i in range(len(bot_ids))]
         self.game=Game(names,seed,mode,max_ticks,rotation)

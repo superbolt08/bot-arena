@@ -16,7 +16,7 @@ import zipfile
 from itertools import combinations
 from pathlib import Path
 
-from .bots import BOT_INFO, BUILTINS
+from .reference_bots import BOT_INFO, BUILTINS
 from .runner import Match, ROOT
 from .sdk import RULES_VERSION
 
@@ -41,7 +41,8 @@ def atomic_json(path, value):
 
 def runtime_digest():
     digest = hashlib.sha256(sys.version.encode())
-    for path in sorted((ROOT / "arena").glob("*.py")):
+    runtime_sources = list((ROOT / "arena").glob("*.py")) + list((ROOT / "examples").rglob("*.py"))
+    for path in sorted(runtime_sources):
         digest.update(path.name.encode())
         digest.update(path.read_bytes())
     return digest.hexdigest()

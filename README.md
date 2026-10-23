@@ -39,7 +39,7 @@ For frontend development, run `python run.py` and `npm run dev` in separate term
 - Welcome page, in-app Markdown guides and a parameterized starter strategy.
 - 2–4 participants; one participant can be a keyboard-controlled human.
 - Real-time WebSocket viewer, bot-view toggle, pause, single-step and speed controls.
-- Four reference bots, Python bot upload and optional JSON model upload.
+- Eight built-in reference bots, Python bot upload and optional JSON model upload.
 - Batch evaluation with rotated seats/corners, replay links, uncertainty intervals and version history.
 - JSON match replays, export/import and timeline scrubbing.
 - CPU imitation-learning example with separate train, validation and evaluation seeds.
@@ -136,9 +136,7 @@ Win rate uses **all games including draws** as the denominator. The 95% Wilson i
 
 Metrics distinguish attempted post-shield damage dealt from HP actually lost. Overkill can therefore make damage-dealt totals exceed damage-taken totals. Training rewards never alter official scoring.
 
-To explore weapon balance, upload [Bomb First](examples/bomb_first_bot.py): it plants bombs with a planned escape, then switches to blaster support. Its [comparison guide](docs/BOMB_FIRST_BOT.md) explains how to run it against Deadeye and create a blaster-only control with the same navigation code.
-
-For a broader Round Robin, generate the [four-strategy roster](docs/STRATEGY_ROSTER.md): Crossfire combines bomb pressure with blaster follow-up, Breach & Shoot bombs crates until it sees an enemy, Range Keeper uses only the blaster, and Siege uses only bombs. Run `python -m examples.strategy_roster` to create the individual upload files.
+To explore weapon balance, use built-in **Hit and Run**, **Crossfire**, **Breach & Shoot** and **Range Keeper** in the Bot Library. Hit and Run is the memory-fixed HitnRun3 strategy. Upload [Bomb First](examples/bomb_first_bot.py) for another comparison: it plants bombs with a planned escape, then switches to blaster support. Its [comparison guide](docs/BOMB_FIRST_BOT.md) explains how to compare it against Deadeye and create a blaster-only control with the same navigation code. To export standalone files for sharing, run `python -m examples.strategy_roster`; it writes Crossfire, Breach & Shoot, Range Keeper and Siege under the ignored `data/` directory. See the [roster guide](docs/STRATEGY_ROSTER.md) for details.
 
 ## Replays and storage
 
